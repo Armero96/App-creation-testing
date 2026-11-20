@@ -1,0 +1,156 @@
+/* ===== Pixel font (stored locally in /fonts so it also works offline) ===== */
+@font-face {
+  font-family: "Press Start 2P";
+  src: url("fonts/PressStart2P-Regular.ttf") format("truetype");
+}
+
+/* ===== Colour palette: bright 8-bit colours, defined once and reused ===== */
+:root {
+  --bg: #1d2b53;        /* dark navy background */
+  --panel: #29366f;     /* slightly lighter boxes */
+  --text: #fff1e8;      /* off-white text */
+  --accent: #ffec27;    /* yellow */
+  --green: #00e436;     /* progress bar */
+  --pink: #ff77a8;      /* + button */
+  --muted: #8b9bb4;     /* inactive / placeholder text */
+}
+
+/* Make width/height include borders and padding (easier sizing) */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;           /* the page itself never scrolls sideways */
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Press Start 2P", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  -webkit-font-smoothing: none; /* keep pixel edges sharp */
+}
+
+/* ===== Screen switching layout ===== */
+
+/* The window: full screen, hides whatever is outside it */
+.viewport {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Both screens in a row. JavaScript moves this left/right with translateX. */
+.track {
+  display: flex;
+  width: 200%;                 /* two screens, each 100% of the window */
+  height: 100%;
+  transition: transform 0.3s ease-out;  /* the slide animation */
+}
+
+/* Each screen is exactly one window wide and can scroll vertically */
+.screen {
+  width: 50%;                  /* 50% of the 200%-wide track = one full window */
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px 16px 80px;     /* extra space at the bottom for the indicator */
+  position: relative;
+}
+
+/* ===== Main screen pieces ===== */
+
+.ascension {
+  text-align: right;
+  font-size: 10px;
+  color: var(--accent);
+}
+
+.adventurer {
+  margin: 24px auto;
+  width: 160px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--panel);
+  border: 4px solid var(--text);
+}
+
+.progress {
+  height: 24px;
+  border: 4px solid var(--text);
+  background: var(--panel);
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--green);
+}
+
+.progress-label {
+  text-align: center;
+  font-size: 10px;
+  margin: 8px 0 24px;
+}
+
+h1, h2 {
+  font-size: 16px;
+  color: var(--accent);
+  font-weight: normal;
+}
+
+.placeholder {
+  color: var(--muted);
+}
+
+/* ===== Habits screen pieces ===== */
+
+/* Big round-ish + button in the bottom-right, easy to tap */
+.add-button {
+  position: absolute;
+  right: 16px;
+  bottom: 80px;
+  width: 64px;
+  height: 64px;
+  font-family: inherit;
+  font-size: 24px;
+  color: var(--bg);
+  background: var(--pink);
+  border: 4px solid var(--text);
+  cursor: pointer;
+}
+
+/* ===== Screen indicator (dots with icons) at the bottom ===== */
+
+.indicator {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.dot {
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  border: 4px solid var(--muted);
+  color: var(--muted);         /* the SVG icon uses this colour */
+  background: var(--bg);
+}
+
+.dot svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+/* The dot for the screen you are on is highlighted */
+.dot.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}

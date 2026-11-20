@@ -99,16 +99,58 @@ function renderHabitList() {
     details.className = "habit-details";
     details.textContent = `${habit.exp} exp · ${when} · ${TIMING_LABELS[habit.timing]}`;
 
-    item.append(name, details);
+    // Edit and Delete buttons for this habit
+    const actions = document.createElement("div");
+    actions.className = "habit-actions";
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.textContent = "Edit";
+    editButton.addEventListener("click", () => openForm(habit));
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.textContent = "Delete";
+    deleteButton.addEventListener("click", () => handleDeleteClick(deleteButton, habit.id));
+
+    actions.append(editButton, deleteButton);
+    item.append(name, details, actions);
     habitList.append(item);
   }
 }
 
+// Delete needs two taps: the first asks "Sure?", the second deletes.
+// If there's no second tap within 3 seconds, the button goes back to normal.
+const DELETE_CONFIRM_TIME = 3000; // milliseconds
 
-// ===== "New habit" form =====
+function handleDeleteClick(button, habitId) {
+  if (button.classList.contains("confirming")) {
+    // Second tap: keep every habit except this one
+    habits = habits.filter((habit) => habit.id !== habitId);
+    saveHabits();
+    renderHabitList();
+    return;
+  }
+
+  // First tap: ask for confirmation
+  button.classList.add("confirming");
+  button.textContent = "Sure?";
+  setTimeout(() => {
+    button.classList.remove("confirming");
+    button.textContent = "Delete";
+  }, DELETE_CONFIRM_TIME);
+}
+
+
+// ===== "New habit" / "Edit habit" form =====
+// The same form is used for both. editingId tells us which mode we're in:
+// null = adding a new habit, otherwise = the id of the habit being edited.
+
+let editingId = null;
 
 const modal = document.getElementById("habit-modal");
 const form = document.getElementById("habit-form");
+const formTitle = document.getElementById("form-title");
 const nameInput = document.getElementById("habit-name");
 const expInput = document.getElementById("habit-exp");
 const dateInput = document.getElementById("habit-date");
@@ -122,11 +164,29 @@ function isFormOpen() {
   return !modal.hidden;
 }
 
-function openForm() {
+// Open the form. With no habit given, it's a blank "New habit" form;
+// with a habit given, its fields are filled in for editing.
+function openForm(habit = null) {
   form.reset();                       // empty all fields
-  dateInput.value = todayString();    // default date: today
-  repeatOptions.hidden = true;        // repeat options start hidden
   formError.textContent = "";
+
+  if (habit) {
+    editingId = habit.id;
+    formTitle.textContent = "Edit habit";
+    nameInput.value = habit.name;
+    expInput.value = habit.exp;
+    dateInput.value = habit.date;
+    timingSelect.value = habit.timing;
+    repeatingCheckbox.checked = habit.repeat !== null;
+    if (habit.repeat) repeatSelect.value = habit.repeat;
+  } else {
+    editingId = null;
+    formTitle.textContent = "New habit";
+    dateInput.value = todayString();  // default date: today
+  }
+
+  // Show the repeat options only if "Repeating" is ticked
+  repeatOptions.hidden = !repeatingCheckbox.checked;
   modal.hidden = false;
   nameInput.focus();                  // put the cursor in the name field
 }
@@ -135,7 +195,8 @@ function closeForm() {
   modal.hidden = true;
 }
 
-document.getElementById("add-button").addEventListener("click", openForm);
+// (Wrapped in a function so the click event isn't passed in as a "habit")
+document.getElementById("add-button").addEventListener("click", () => openForm());
 document.getElementById("cancel-button").addEventListener("click", closeForm);
 
 // Show or hide the repeat options when "Repeating" is ticked/unticked
@@ -165,14 +226,23 @@ form.addEventListener("submit", (event) => {
     return;
   }
 
-  habits.push({
-    id: makeId(),
+  // The values from the form (everything except the id)
+  const fields = {
     name: name,
     exp: exp,
     date: date,
     repeat: repeatingCheckbox.checked ? repeatSelect.value : null, // null = one-off task
     timing: timingSelect.value,
-  });
+  };
+
+  if (editingId === null) {
+    // New habit: give it a fresh id and add it to the end of the list
+    habits.push({ id: makeId(), ...fields });
+  } else {
+    // Editing: find the habit and overwrite its fields (the id stays the same)
+    const habit = habits.find((h) => h.id === editingId);
+    Object.assign(habit, fields);
+  }
 
   saveHabits();
   renderHabitList();

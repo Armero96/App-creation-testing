@@ -143,6 +143,31 @@ h1, h2 {
   color: var(--muted);
 }
 
+/* Edit / Delete buttons, in a row at the bottom-right of each habit */
+.habit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.habit-actions button {
+  min-width: 96px;
+  min-height: 44px;            /* big enough to tap with a thumb */
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--text);
+  background: var(--bg);
+  border: 4px solid var(--text);
+  cursor: pointer;
+}
+
+/* Delete button after the first tap: "Sure?" in pink */
+.habit-actions button.confirming {
+  color: var(--bg);
+  background: var(--pink);
+}
+
 /* Big + button in the bottom-right, easy to tap.
    "fixed" here is measured against the sliding track (not the whole window),
    because the track uses a transform. That keeps the button in the corner of

@@ -10,6 +10,7 @@
 
 const STORAGE_KEY = "jobits.habits";
 const COMPLETIONS_KEY = "jobits.completions";
+const COMPLETED_DAYS_KEY = "jobits.completedDays";
 
 // Read something from localStorage; if it's missing or broken, use the fallback
 function loadFromStorage(key, fallback) {
@@ -30,6 +31,10 @@ function saveCompletions() {
   localStorage.setItem(COMPLETIONS_KEY, JSON.stringify(completions));
 }
 
+function saveCompletedDays() {
+  localStorage.setItem(COMPLETED_DAYS_KEY, JSON.stringify(completedDays));
+}
+
 // The list of all habits, kept in memory while the app is open.
 // Each habit looks like:
 // { id, name, exp, date: "YYYY-MM-DD", repeat: null | "daily" | ..., timing: "morning" | ... }
@@ -39,6 +44,11 @@ let habits = loadFromStorage(STORAGE_KEY, []);
 // e.g. { "2026-11-20": ["id1", "id2"], "2026-11-21": ["id1"] }
 let completions = loadFromStorage(COMPLETIONS_KEY, {});
 
+// The record of fully completed days, e.g. { "2026-11-16": true, "2026-11-17": true }.
+// Only today's entry is ever changed; once a day is over, its result is frozen.
+// Level and ascension are both worked out from this record.
+let completedDays = loadFromStorage(COMPLETED_DAYS_KEY, {});
+
 
 // ===== Small helpers =====
 
@@ -46,10 +56,14 @@ let completions = loadFromStorage(COMPLETIONS_KEY, {});
 // (We don't use toISOString(), because that gives the date in UTC,
 //  which can be yesterday or tomorrow depending on your time zone.)
 function todayString() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0"); // months start at 0
-  const day = String(now.getDate()).padStart(2, "0");
+  return dateToString(new Date());
+}
+
+// Turn a Date object into "YYYY-MM-DD" (local time)
+function dateToString(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // months start at 0
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -189,6 +203,131 @@ function toggleDone(habit) {
 }
 
 
+// ===== Today's tasks and whether the day is complete =====
+
+// Split today's tasks into carried-over ones and ones due today
+function getTodayTasks(today) {
+  // Carried over: one-off tasks from earlier days, not done on an earlier day.
+  // (If ticked today, they stay visible, ticked, for the rest of today.)
+  const carried = habits.filter(
+    (h) => h.repeat === null && h.date < today && !isDoneOnOtherDay(h.id, today)
+  );
+  // Due today: everything whose date/repeat rule matches today
+  const dueToday = habits.filter((h) => isDueOn(h, today));
+  return { carried, dueToday };
+}
+
+// Total exp of today's tasks, and how much of it has been earned
+function getTodayExp(today) {
+  const { carried, dueToday } = getTodayTasks(today);
+  const allTasks = [...carried, ...dueToday];
+  const total = allTasks.reduce((sum, h) => sum + h.exp, 0);
+  const earned = allTasks.filter((h) => isDone(h, today)).reduce((sum, h) => sum + h.exp, 0);
+  return { total, earned };
+}
+
+// A day is complete when it has tasks and all of them are ticked.
+// (A day with no tasks counts as missed.)
+function isTodayComplete(today) {
+  const { total, earned } = getTodayExp(today);
+  return total > 0 && earned === total;
+}
+
+// Keep today's entry in the completed-days record up to date.
+// Adds it when the day becomes complete, removes it if a task is un-ticked
+// (which undoes the level-up), or if a new task is added to today.
+function updateTodayRecord() {
+  const today = todayString();
+  const complete = isTodayComplete(today);
+  if (complete && !completedDays[today]) {
+    completedDays[today] = true;
+    saveCompletedDays();
+  } else if (!complete && completedDays[today]) {
+    delete completedDays[today];
+    saveCompletedDays();
+  }
+}
+
+
+// ===== Levels and ascension =====
+
+const SWORDS = ["Wooden", "Stone", "Copper", "Iron", "Silver", "Golden", "Obsidian"];
+const MAX_LEVEL = 7;
+
+// The Monday of the week that a date falls in, as "YYYY-MM-DD"
+function weekStart(dateString) {
+  const date = parseDate(dateString);
+  const daysSinceMonday = (date.getDay() + 6) % 7; // Mon = 0, ..., Sun = 6
+  date.setDate(date.getDate() - daysSinceMonday);
+  return dateToString(date);
+}
+
+// Level = 1 + completed days so far this week (Monday to today), at most 7.
+// The Monday reset needs no extra code: a new week has no completed days yet.
+function getLevel(today) {
+  const monday = weekStart(today);
+  const completedThisWeek = Object.keys(completedDays).filter(
+    (day) => day >= monday && day <= today
+  ).length;
+  return Math.min(1 + completedThisWeek, MAX_LEVEL);
+}
+
+// Ascension = number of weeks with all 7 days completed.
+// (Completing Monday-Saturday reaches level 7; completing Sunday too ascends.)
+function getAscension() {
+  const daysPerWeek = {};  // e.g. { "2026-11-16": 7, "2026-11-23": 3 }
+  for (const day of Object.keys(completedDays)) {
+    const monday = weekStart(day);
+    daysPerWeek[monday] = (daysPerWeek[monday] || 0) + 1;
+  }
+  return Object.values(daysPerWeek).filter((count) => count === 7).length;
+}
+
+// The level and ascension shown last time, to notice when they go up.
+// null = nothing shown yet (so opening the app doesn't trigger a message).
+let shownLevel = null;
+let shownAscension = null;
+let levelUpTimer = null;
+
+const levelLabel = document.getElementById("level-label");
+const levelUpMessage = document.getElementById("level-up");
+const swordName = document.getElementById("sword-name");
+const ascensionLabel = document.getElementById("ascension-label");
+
+const LEVEL_UP_TIME = 3000; // how long the message stays, in milliseconds
+
+// Show a message under the level for a few seconds
+function showLevelUpMessage(text) {
+  levelUpMessage.textContent = text;
+  // Remove and re-add the class so the pop animation plays again each time
+  levelUpMessage.classList.remove("show");
+  void levelUpMessage.offsetWidth; // forces the browser to notice the removal
+  levelUpMessage.classList.add("show");
+
+  clearTimeout(levelUpTimer);
+  levelUpTimer = setTimeout(() => levelUpMessage.classList.remove("show"), LEVEL_UP_TIME);
+}
+
+function renderLevel() {
+  const today = todayString();
+  const level = getLevel(today);
+  const ascension = getAscension();
+
+  levelLabel.textContent = `Level ${level}`;
+  swordName.textContent = `${SWORDS[level - 1]} sword`;
+  ascensionLabel.textContent = `Ascension: ${ascension}`;
+
+  // Pop up a message only when something went up since the last redraw
+  if (shownAscension !== null && ascension > shownAscension) {
+    showLevelUpMessage("Ascension!");
+  } else if (shownLevel !== null && level > shownLevel) {
+    showLevelUpMessage("Level-up!");
+  }
+  shownLevel = level;
+  shownAscension = ascension;
+}
+
+
 // ===== Main screen: today's tasks and the progress bar =====
 
 const carriedSection = document.getElementById("carried-section");
@@ -262,13 +401,7 @@ function makeTaskRow(habit, today, showTiming) {
 function renderMainScreen() {
   const today = todayString();
 
-  // Carried over: one-off tasks from earlier days, not done on an earlier day.
-  // (If ticked today, they stay visible, ticked, for the rest of today.)
-  const carried = habits.filter(
-    (h) => h.repeat === null && h.date < today && !isDoneOnOtherDay(h.id, today)
-  );
-  // Today's tasks: everything due today
-  const dueToday = habits.filter((h) => isDueOn(h, today));
+  const { carried, dueToday } = getTodayTasks(today);
 
   // Carried-over tasks: one list, sorted by time, each row says its time
   carriedList.innerHTML = "";
@@ -299,9 +432,7 @@ function renderMainScreen() {
   }
 
   // Progress bar: exp of ticked tasks out of the exp of all of today's tasks
-  const allTasks = [...carried, ...dueToday];
-  const total = allTasks.reduce((sum, h) => sum + h.exp, 0);
-  const earned = allTasks.filter((h) => isDone(h, today)).reduce((sum, h) => sum + h.exp, 0);
+  const { total, earned } = getTodayExp(today);
 
   if (total === 0) {
     progressFill.style.width = "0%";
@@ -314,6 +445,8 @@ function renderMainScreen() {
 
 // Redraw both screens (after any change to habits or ticks)
 function renderAll() {
+  updateTodayRecord();  // first: is today complete now? (this sets the level)
+  renderLevel();
   renderMainScreen();
   renderHabitList();
 }

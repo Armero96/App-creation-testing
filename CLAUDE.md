@@ -26,6 +26,8 @@ It replaces `spec_page.md` (the original draft). If the two disagree, follow thi
 **Jobits** ("Jorge's habits") is a **gamified habit tracker**, built as a **PWA** (Progressive Web App) for my phone.
 I add habits and tasks, tick them off each day, and earn experience (exp). Completing all of a day's tasks levels up an adventurer, who gets better gear through the week.
 
+**Naming:** in the app's visible text, habits and tasks are called **quests** (e.g. "Quests", "New quest", "Today's quests"). The code and stored data keep the word "habit".
+
 ## Tech stack
 
 - **Plain HTML, CSS and vanilla JavaScript.** No frameworks (no React, Vue, etc.) and no build step.
@@ -48,9 +50,9 @@ From top to bottom:
 3. **Day progress bar**: fills up with the exp earned today, out of today's total.
 4. **Carried-over tasks**: one-off tasks from earlier days that weren't completed, shown at the top of the list.
 5. **Today's tasks**: each one can be ticked as completed, which adds its exp to the day bar.
-   Tasks are **ordered by time of day**: morning → noon → afternoon → evening → any time.
+   Tasks are grouped into **time-of-day slots** (morning, noon, afternoon, evening), each with a small label and a faint horizontal separator, so the list reads like a timeline of the day. All four slots are always shown, even when empty; an "any time" slot is added at the end only if it has tasks. Ticked tasks show **two crossed swords** in their box.
 
-### Screen 2 — Habits (reached by swiping left)
+### Screen 2 — Quests (habits and tasks; reached by swiping left)
 
 - A list of **all planned habits and tasks**.
 - Each one can be **edited** (name, exp, date, time of day, repetition) or **deleted**.
@@ -64,15 +66,18 @@ From top to bottom:
     - every work day (Mon–Fri)
     - every second day (counted from the start date)
     - every week (same weekday as the start date)
-    - every month (same day of the month as the start date)
+    - every month (same day of the month as the start date; if that month is shorter, e.g. the 31st in November, it's due on the **last day of the month** instead)
 
 ---
 
 ## Game rules
 
 1. **Exp per task:** each task gives the exp value set when it was created.
-2. **Daily goal:** a day's exp goal is the **sum of the exp of all tasks due that day**. The day counts as **completed** only when all of them are done.
-3. **Level-up:** completing a day gives **+1 level** immediately, and the gear upgrades.
+2. **Daily goal:** a day's exp goal is the **sum of the exp of all tasks due that day, plus any carried-over one-off tasks**. The day counts as **completed** only when all of them are done. (So an old unfinished task blocks level-ups until it's done or deleted. That's intended.)
+   - **Un-ticking:** a ticked task can be un-ticked; its exp is removed from the day's bar again.
+   - **Changes during the day:** adding, editing or deleting a task changes **today's** goal right away.
+   - **No tasks:** a day with no tasks due counts as **missed** (no level-up).
+3. **Level-up:** completing a day gives **+1 level** immediately, and the gear upgrades. The level is shown as "Level N" under the adventurer, and a short **"Level-up!"** message pops up under it. If a task is un-ticked so the day is no longer complete, the **level-up is undone**.
 4. **Missed day:** if a day isn't completed by midnight, there's no level-up. The next day starts at the same level with an empty bar.
 5. **Days end at midnight**, local time.
 6. **Levels run from 1 to 7.** The week starts at level 1.
@@ -113,12 +118,7 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
 
 ## Open questions (ask me before building these parts)
 
-- Do **carried-over one-off tasks count towards the new day's exp goal**, or are they only shown as reminders? (If they count, one postponed task could block every future level-up.)
-- If a day has **no tasks due**, does it count as completed (automatic level-up)?
-- Can a ticked task be **un-ticked** if I tapped it by mistake? Does that undo a level-up?
-- If I add or edit a task during the day, does it change **today's** goal right away?
-- For "every month" on the 29th–31st: what happens in shorter months?
-
+- None right now. Add new ones here as they come up.
 ---
 
 ## Scope

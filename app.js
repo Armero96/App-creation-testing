@@ -9,15 +9,16 @@
 // and back into a list when loading.
 
 const STORAGE_KEY = "jobits.habits";
+const COMPLETIONS_KEY = "jobits.completions";
 
-function loadHabits() {
+// Read something from localStorage; if it's missing or broken, use the fallback
+function loadFromStorage(key, fallback) {
   try {
-    const text = localStorage.getItem(STORAGE_KEY);
-    return text ? JSON.parse(text) : [];   // nothing saved yet -> empty list
+    const text = localStorage.getItem(key);
+    return text ? JSON.parse(text) : fallback;   // nothing saved yet -> fallback
   } catch (error) {
-    // Storage blocked or data unreadable: start with an empty list
-    console.warn("Could not load habits:", error);
-    return [];
+    console.warn("Could not load " + key + ":", error);
+    return fallback;
   }
 }
 
@@ -25,10 +26,18 @@ function saveHabits() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
 }
 
+function saveCompletions() {
+  localStorage.setItem(COMPLETIONS_KEY, JSON.stringify(completions));
+}
+
 // The list of all habits, kept in memory while the app is open.
 // Each habit looks like:
 // { id, name, exp, date: "YYYY-MM-DD", repeat: null | "daily" | ..., timing: "morning" | ... }
-let habits = loadHabits();
+let habits = loadFromStorage(STORAGE_KEY, []);
+
+// The log of ticked tasks: for each day, the ids of the tasks done that day.
+// e.g. { "2026-11-20": ["id1", "id2"], "2026-11-21": ["id1"] }
+let completions = loadFromStorage(COMPLETIONS_KEY, {});
 
 
 // ===== Small helpers =====
@@ -44,11 +53,26 @@ function todayString() {
   return `${year}-${month}-${day}`;
 }
 
+// Turn "2026-11-20" into a Date object at local midnight
+// (new Date("2026-11-20") would use UTC, which can shift the day)
+function parseDate(dateString) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 // Turn "2026-11-20" into something friendlier like "20 Nov 2026"
 function formatDate(dateString) {
-  const [year, month, day] = dateString.split("-").map(Number);
-  const date = new Date(year, month - 1, day); // local date, no time-zone shift
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return parseDate(dateString).toLocaleDateString("en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+}
+
+// Whole days from date a to date b (both "YYYY-MM-DD").
+// Done in UTC so summer/winter clock changes can't make a day 23 or 25 hours.
+function daysBetween(a, b) {
+  const [ya, ma, da] = a.split("-").map(Number);
+  const [yb, mb, db] = b.split("-").map(Number);
+  return (Date.UTC(yb, mb - 1, db) - Date.UTC(ya, ma - 1, da)) / 86400000;
 }
 
 // A unique id for each habit, so we can find it later (for editing/deleting)
@@ -72,6 +96,227 @@ const TIMING_LABELS = {
   afternoon: "afternoon",
   evening: "evening",
 };
+
+
+// Order of the times of day, used to sort the day's tasks
+const TIMING_ORDER = ["morning", "noon", "afternoon", "evening", "anytime"];
+
+
+// ===== When is a habit due? =====
+// Note: "YYYY-MM-DD" strings can be compared with < and > directly,
+// because they sort in the same order as the dates they stand for.
+
+function isDueOn(habit, dateString) {
+  // One-off task: due only on its own date
+  if (habit.repeat === null) return habit.date === dateString;
+
+  // Repeating habit: never before its start date
+  if (dateString < habit.date) return false;
+
+  const date = parseDate(dateString);
+  const start = parseDate(habit.date);
+
+  switch (habit.repeat) {
+    case "daily":
+      return true;
+    case "workdays": {
+      const weekday = date.getDay();           // 0 = Sunday ... 6 = Saturday
+      return weekday >= 1 && weekday <= 5;
+    }
+    case "every2days":
+      return daysBetween(habit.date, dateString) % 2 === 0;
+    case "weekly":
+      return date.getDay() === start.getDay();
+    case "monthly": {
+      // Same day of the month; in shorter months, the last day instead.
+      // new Date(year, month + 1, 0) is "day 0 of next month" = last day of this month.
+      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      return date.getDate() === Math.min(start.getDate(), lastDay);
+    }
+    default:
+      return false;
+  }
+}
+
+
+// ===== Ticking tasks off (the completion log) =====
+
+// Was this task ticked on this specific day?
+function isDoneOnDay(habitId, dateString) {
+  return (completions[dateString] || []).includes(habitId);
+}
+
+// Was this task ticked on any day other than the given one?
+function isDoneOnOtherDay(habitId, dateString) {
+  return Object.keys(completions).some(
+    (day) => day !== dateString && completions[day].includes(habitId)
+  );
+}
+
+// Is this task done, as far as today's screen is concerned?
+// Repeating habits: only today's tick counts. One-off tasks: a tick on any day.
+function isDone(habit, today) {
+  if (habit.repeat) return isDoneOnDay(habit.id, today);
+  return isDoneOnDay(habit.id, today) || isDoneOnOtherDay(habit.id, today);
+}
+
+// Remove a task's id from every day in the log
+function removeFromLog(habitId) {
+  for (const day of Object.keys(completions)) {
+    completions[day] = completions[day].filter((id) => id !== habitId);
+    if (completions[day].length === 0) delete completions[day]; // tidy up empty days
+  }
+}
+
+// Tick or un-tick a task for today
+function toggleDone(habit) {
+  const today = todayString();
+  if (isDone(habit, today)) {
+    // Un-tick. For one-off tasks this clears every tick, wherever it was.
+    if (habit.repeat) {
+      completions[today] = completions[today].filter((id) => id !== habit.id);
+      if (completions[today].length === 0) delete completions[today];
+    } else {
+      removeFromLog(habit.id);
+    }
+  } else {
+    // Tick: add the id to today's list
+    completions[today] = completions[today] || [];
+    completions[today].push(habit.id);
+  }
+  saveCompletions();
+  renderAll();
+}
+
+
+// ===== Main screen: today's tasks and the progress bar =====
+
+const carriedSection = document.getElementById("carried-section");
+const carriedList = document.getElementById("carried-list");
+const todaySlots = document.getElementById("today-slots");
+
+// Crossed swords, drawn on an 8x8 pixel grid, shown in the box of a ticked task.
+// Each sword: blade (white) from a top corner to the middle, then guard, handle
+// and pommel (yellow) towards the opposite bottom corner.
+const CROSSED_SWORDS_SVG = `
+  <svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
+    <g class="sword-blade">
+      <rect x="0" y="0" width="1" height="1"/><rect x="1" y="1" width="1" height="1"/>
+      <rect x="2" y="2" width="1" height="1"/><rect x="3" y="3" width="1" height="1"/>
+      <rect x="7" y="0" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/>
+      <rect x="5" y="2" width="1" height="1"/><rect x="4" y="3" width="1" height="1"/>
+    </g>
+    <g class="sword-hilt">
+      <rect x="3" y="5" width="1" height="1"/><rect x="5" y="3" width="1" height="1"/>
+      <rect x="4" y="4" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/>
+      <rect x="6" y="6" width="1" height="1"/><rect x="7" y="7" width="1" height="1"/>
+      <rect x="2" y="3" width="1" height="1"/><rect x="4" y="5" width="1" height="1"/>
+      <rect x="3" y="4" width="1" height="1"/><rect x="2" y="5" width="1" height="1"/>
+      <rect x="1" y="6" width="1" height="1"/><rect x="0" y="7" width="1" height="1"/>
+    </g>
+  </svg>`;
+const progressFill = document.getElementById("progress-fill");
+const progressLabel = document.getElementById("progress-label");
+
+// Sort tasks morning -> ... -> any time (tasks with the same time keep their order)
+function sortByTiming(tasks) {
+  return tasks.sort((a, b) => TIMING_ORDER.indexOf(a.timing) - TIMING_ORDER.indexOf(b.timing));
+}
+
+// Build one tappable task row.
+// showTiming: whether to print the time of day (not needed inside a slot,
+// since the slot's label already says it).
+function makeTaskRow(habit, today, showTiming) {
+  const done = isDone(habit, today);
+
+  const item = document.createElement("li");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = done ? "task done" : "task";
+  button.setAttribute("aria-pressed", done); // tells screen readers it's ticked
+
+  const box = document.createElement("span");
+  box.className = "task-box";
+  if (done) box.innerHTML = CROSSED_SWORDS_SVG; // fixed icon, no user text, so innerHTML is safe
+
+  const text = document.createElement("span");
+  text.className = "task-text";
+
+  const name = document.createElement("span");
+  name.className = "task-name";
+  name.textContent = habit.name;
+
+  const details = document.createElement("span");
+  details.className = "task-details";
+  details.textContent = showTiming
+    ? `${habit.exp} exp · ${TIMING_LABELS[habit.timing]}`
+    : `${habit.exp} exp`;
+
+  text.append(name, details);
+  button.append(box, text);
+  button.addEventListener("click", () => toggleDone(habit));
+  item.append(button);
+  return item;
+}
+
+function renderMainScreen() {
+  const today = todayString();
+
+  // Carried over: one-off tasks from earlier days, not done on an earlier day.
+  // (If ticked today, they stay visible, ticked, for the rest of today.)
+  const carried = habits.filter(
+    (h) => h.repeat === null && h.date < today && !isDoneOnOtherDay(h.id, today)
+  );
+  // Today's tasks: everything due today
+  const dueToday = habits.filter((h) => isDueOn(h, today));
+
+  // Carried-over tasks: one list, sorted by time, each row says its time
+  carriedList.innerHTML = "";
+  for (const habit of sortByTiming(carried)) carriedList.append(makeTaskRow(habit, today, true));
+  carriedSection.hidden = carried.length === 0;
+
+  // Today's tasks: one slot per time of day, in order
+  todaySlots.innerHTML = "";
+  for (const timing of TIMING_ORDER) {
+    const tasksInSlot = dueToday.filter((h) => h.timing === timing);
+
+    // The four day slots are always shown; "any time" only if it has tasks
+    if (timing === "anytime" && tasksInSlot.length === 0) continue;
+
+    const slot = document.createElement("div");
+    slot.className = "slot";
+
+    const label = document.createElement("p");
+    label.className = "slot-label";
+    label.textContent = TIMING_LABELS[timing];
+
+    const list = document.createElement("ul");
+    list.className = "task-list";
+    for (const habit of tasksInSlot) list.append(makeTaskRow(habit, today, false));
+
+    slot.append(label, list);
+    todaySlots.append(slot);
+  }
+
+  // Progress bar: exp of ticked tasks out of the exp of all of today's tasks
+  const allTasks = [...carried, ...dueToday];
+  const total = allTasks.reduce((sum, h) => sum + h.exp, 0);
+  const earned = allTasks.filter((h) => isDone(h, today)).reduce((sum, h) => sum + h.exp, 0);
+
+  if (total === 0) {
+    progressFill.style.width = "0%";
+    progressLabel.textContent = "No quests today";
+  } else {
+    progressFill.style.width = `${(earned / total) * 100}%`;
+    progressLabel.textContent = `${earned} / ${total} exp`;
+  }
+}
+
+// Redraw both screens (after any change to habits or ticks)
+function renderAll() {
+  renderMainScreen();
+  renderHabitList();
+}
 
 
 // ===== Habits screen: drawing the list =====
@@ -127,8 +372,10 @@ function handleDeleteClick(button, habitId) {
   if (button.classList.contains("confirming")) {
     // Second tap: keep every habit except this one
     habits = habits.filter((habit) => habit.id !== habitId);
+    removeFromLog(habitId);   // forget its ticks too
     saveHabits();
-    renderHabitList();
+    saveCompletions();
+    renderAll();              // today's goal changes right away
     return;
   }
 
@@ -172,7 +419,7 @@ function openForm(habit = null) {
 
   if (habit) {
     editingId = habit.id;
-    formTitle.textContent = "Edit habit";
+    formTitle.textContent = "Edit quest";
     nameInput.value = habit.name;
     expInput.value = habit.exp;
     dateInput.value = habit.date;
@@ -181,7 +428,7 @@ function openForm(habit = null) {
     if (habit.repeat) repeatSelect.value = habit.repeat;
   } else {
     editingId = null;
-    formTitle.textContent = "New habit";
+    formTitle.textContent = "New quest";
     dateInput.value = todayString();  // default date: today
   }
 
@@ -245,7 +492,7 @@ form.addEventListener("submit", (event) => {
   }
 
   saveHabits();
-  renderHabitList();
+  renderAll();   // today's goal changes right away
   closeForm();
 });
 
@@ -314,4 +561,4 @@ track.addEventListener("touchend", (event) => {
 
 // ===== Start-up =====
 showScreen(0);      // start on the Main screen
-renderHabitList();  // draw any habits saved from earlier visits
+renderAll();        // draw both screens from the saved data

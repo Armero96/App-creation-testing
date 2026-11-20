@@ -23,25 +23,34 @@
           <p>Wooden sword</p>
         </div>
 
-        <!-- Day progress bar (empty for now; filled in a later step) -->
+        <!-- Day progress bar: app.js sets the fill width and the label -->
         <div class="progress">
-          <div class="progress-fill" style="width: 0%"></div>
+          <div class="progress-fill" id="progress-fill"></div>
         </div>
-        <p class="progress-label">0 / 0 exp</p>
+        <p class="progress-label" id="progress-label">No quests today</p>
 
-        <h2>Today's tasks</h2>
-        <p class="placeholder">No tasks yet</p>
+        <!-- One-off tasks from earlier days that aren't done yet.
+             Hidden when there are none. -->
+        <div id="carried-section" hidden>
+          <h2>Carried over</h2>
+          <ul class="task-list" id="carried-list"></ul>
+        </div>
+
+        <h2>Today's quests</h2>
+        <!-- app.js fills this with one slot per time of day
+             (morning, noon, afternoon, evening, and "any time" if needed) -->
+        <div id="today-slots"></div>
       </section>
 
       <!-- ===== Screen 2: Habits ===== -->
-      <section class="screen" id="screen-habits" aria-label="Habits">
-        <h1>Habits</h1>
+      <section class="screen" id="screen-habits" aria-label="Quests">
+        <h1>Quests</h1>
         <!-- Shown only when there are no habits saved -->
-        <p class="placeholder" id="habits-empty">No habits yet</p>
+        <p class="placeholder" id="habits-empty">No quests yet</p>
         <!-- app.js fills this list with one <li> per saved habit -->
         <ul class="habit-list" id="habit-list"></ul>
         <!-- Opens the "new habit" form -->
-        <button class="add-button" id="add-button" type="button" aria-label="Add habit">+</button>
+        <button class="add-button" id="add-button" type="button" aria-label="Add quest">+</button>
       </section>
 
     </div>
@@ -65,7 +74,7 @@
         <rect x="0" y="7" width="1" height="1"/>
       </svg>
     </span>
-    <span class="dot" data-screen="1" title="Habits">
+    <span class="dot" data-screen="1" title="Quests">
       <!-- List: three bullet points with lines -->
       <svg viewBox="0 0 8 8" shape-rendering="crispEdges">
         <rect x="0" y="1" width="1" height="1"/><rect x="2" y="1" width="6" height="1"/>
@@ -80,8 +89,8 @@
        The "hidden" attribute keeps it invisible until app.js removes it. -->
   <div class="modal" id="habit-modal" hidden>
     <form class="habit-form" id="habit-form" novalidate>
-      <!-- app.js changes this to "Edit habit" when editing -->
-      <h2 id="form-title">New habit</h2>
+      <!-- app.js changes this to "Edit quest" when editing -->
+      <h2 id="form-title">New quest</h2>
 
       <label for="habit-name">Name</label>
       <input type="text" id="habit-name" maxlength="40" autocomplete="off">

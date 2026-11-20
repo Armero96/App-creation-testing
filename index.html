@@ -36,9 +36,12 @@
       <!-- ===== Screen 2: Habits ===== -->
       <section class="screen" id="screen-habits" aria-label="Habits">
         <h1>Habits</h1>
-        <p class="placeholder">No habits yet</p>
-        <!-- The + button does nothing yet; the add form comes in a later step -->
-        <button class="add-button" type="button" aria-label="Add habit">+</button>
+        <!-- Shown only when there are no habits saved -->
+        <p class="placeholder" id="habits-empty">No habits yet</p>
+        <!-- app.js fills this list with one <li> per saved habit -->
+        <ul class="habit-list" id="habit-list"></ul>
+        <!-- Opens the "new habit" form -->
+        <button class="add-button" id="add-button" type="button" aria-label="Add habit">+</button>
       </section>
 
     </div>
@@ -71,6 +74,59 @@
       </svg>
     </span>
   </nav>
+
+  <!-- ===== "New habit" popup =====
+       It lives outside the sliding track so it always covers the whole window.
+       The "hidden" attribute keeps it invisible until app.js removes it. -->
+  <div class="modal" id="habit-modal" hidden>
+    <form class="habit-form" id="habit-form" novalidate>
+      <h2>New habit</h2>
+
+      <label for="habit-name">Name</label>
+      <input type="text" id="habit-name" maxlength="40" autocomplete="off">
+
+      <label for="habit-exp">Exp</label>
+      <!-- inputmode="numeric" shows a number keypad on phones -->
+      <input type="number" id="habit-exp" min="1" step="1" inputmode="numeric">
+
+      <label for="habit-date">Date</label>
+      <input type="date" id="habit-date">
+
+      <label for="habit-timing">Time of day</label>
+      <select id="habit-timing">
+        <option value="anytime">Any time</option>
+        <option value="morning">Morning</option>
+        <option value="noon">Noon</option>
+        <option value="afternoon">Afternoon</option>
+        <option value="evening">Evening</option>
+      </select>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="habit-repeating">
+        Repeating
+      </label>
+
+      <!-- Only shown when "Repeating" is ticked -->
+      <div id="repeat-options" hidden>
+        <label for="habit-repeat">Repeat</label>
+        <select id="habit-repeat">
+          <option value="daily">Every day</option>
+          <option value="workdays">Every work day</option>
+          <option value="every2days">Every second day</option>
+          <option value="weekly">Every week</option>
+          <option value="monthly">Every month</option>
+        </select>
+      </div>
+
+      <!-- Validation messages appear here -->
+      <p class="form-error" id="form-error"></p>
+
+      <div class="form-buttons">
+        <button type="button" class="button-secondary" id="cancel-button">Cancel</button>
+        <button type="submit" class="button-primary">Save</button>
+      </div>
+    </form>
+  </div>
 
   <script src="app.js"></script>
 </body>

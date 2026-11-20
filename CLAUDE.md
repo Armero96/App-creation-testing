@@ -48,15 +48,17 @@ From top to bottom:
 3. **Day progress bar**: fills up with the exp earned today, out of today's total.
 4. **Carried-over tasks**: one-off tasks from earlier days that weren't completed, shown at the top of the list.
 5. **Today's tasks**: each one can be ticked as completed, which adds its exp to the day bar.
+   Tasks are **ordered by time of day**: morning → noon → afternoon → evening → any time.
 
 ### Screen 2 — Habits (reached by swiping left)
 
 - A list of **all planned habits and tasks**.
-- Each one can be **edited** (name, exp, date, repetition) or **deleted**.
+- Each one can be **edited** (name, exp, date, time of day, repetition) or **deleted**.
 - A **+ button** opens a form to add a new one, with:
   - **Name**
   - **Exp value**: how much it's worth (e.g. brushing teeth = 5, cleaning the kitchen = 25)
   - **Date**: when it's due (for repeating habits, the start date)
+  - **Time of day** (optional): morning, noon, afternoon, evening, or "any time" (the default). Used to order the day's tasks.
   - **"Repeating" checkbox**: when ticked, shows the repeat options:
     - every day
     - every work day (Mon–Fri)

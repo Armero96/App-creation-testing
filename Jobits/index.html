@@ -126,6 +126,21 @@
         <option value="evening">Evening</option>
       </select>
 
+      <!-- Category: tap a sticker to choose it, tap it again to clear it.
+           app.js draws the pixel icons into the empty <span>s. -->
+      <p class="form-label" id="category-label">Category (optional)</p>
+      <div class="category-picker" role="group" aria-labelledby="category-label">
+        <button type="button" class="category-option cat-strength" data-category="strength" aria-label="Strength">
+          <span class="category-icon"></span>STR
+        </button>
+        <button type="button" class="category-option cat-mind" data-category="mind" aria-label="Mind">
+          <span class="category-icon"></span>MIND
+        </button>
+        <button type="button" class="category-option cat-constitution" data-category="constitution" aria-label="Constitution">
+          <span class="category-icon"></span>CON
+        </button>
+      </div>
+
       <label class="checkbox-row">
         <input type="checkbox" id="habit-repeating">
         Repeating

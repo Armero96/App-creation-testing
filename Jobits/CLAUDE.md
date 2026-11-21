@@ -38,22 +38,49 @@ From top to bottom:
 4. **Carried-over tasks**: one-off tasks from earlier days that weren't completed, shown at the top of the list.
 5. **Today's tasks**: each one can be ticked as completed, which adds its exp to the day bar.
    Tasks are grouped into **time-of-day slots** (morning, noon, afternoon, evening), each with a small label and a faint horizontal separator, so the list reads like a timeline of the day. All four slots are always shown, even when empty; an "any time" slot is added at the end only if it has tasks. Ticked tasks show **two crossed swords** in their box.
+   *(Version 2)* Each task shows its **category label** (see *Categories*), if it has one.
 
 ### Screen 2 — Quests (habits and tasks; reached by swiping left)
 
 - A list of **all planned habits and tasks**.
-- Each one can be **edited** (name, exp, date, time of day, repetition) or **deleted**.
+- Each one can be **edited** (name, exp, date, time of day, category, repetition) or **deleted**.
+- *(Version 2)* Each quest shows its **category label**, if it has one.
+- *(Version 2)* **Filters** above the list, as two rows of tappable options that combine (e.g. *Mind + Repeating*):
+  - **Category:** All · Strength · Mind · Constitution · None
+  - **Type:** All · One-off · Repeating
+  - The last chosen filters are remembered.
+- *(Version 2)* **Completed one-off quests are hidden** from the list by default. A **"Show completed"** toggle shows them again.
+- *(Version 2)* **Export / Import** buttons for backing up all data (see *Data backup*).
 - A **+ button** opens a form to add a new one, with:
   - **Name**
   - **Exp value**: how much it's worth (e.g. brushing teeth = 5, cleaning the kitchen = 25)
   - **Date**: when it's due (for repeating habits, the start date)
   - **Time of day** (optional): morning, noon, afternoon, evening, or "any time" (the default). Used to order the day's tasks.
+  - *(Version 2)* **Category** (optional): picked by tapping one of three big "stickers"; tapping the chosen one again clears it. At most **one** category per quest.
   - **"Repeating" checkbox**: when ticked, shows the repeat options:
     - every day
     - every work day (Mon–Fri)
     - every second day (counted from the start date)
     - every week (same weekday as the start date)
     - every month (same day of the month as the start date; if that month is shorter, e.g. the 31st in November, it's due on the **last day of the month** instead)
+
+### Categories (version 2)
+
+Each quest can have **at most one** category, or none. The category is shown as a small coloured label with a pixel icon:
+
+| Category     | Colour | Pixel icon  |
+|--------------|--------|-------------|
+| Strength     | Red    | Strong arm  |
+| Mind         | Blue   | Brain       |
+| Constitution | Green  | Heart       |
+
+For now, categories are only for organizing and filtering; they don't change the game rules. Existing quests start with no category.
+
+### Data backup (version 2)
+
+All data lives only in the phone's browser, so clearing site data or resetting the phone would erase it.
+- **Export** saves all data (quests, ticks, completed days, and therefore level and ascension) as a small file.
+- **Import** loads such a file back, e.g. on a new phone or after a reset.
 
 ---
 
@@ -105,25 +132,31 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
 
 ## Open questions (ask me before building these parts)
 
-- None right now. Add new ones here as they come up.
+- **Import:** should importing a backup **replace** all current data, or **merge** it with what's already there? (Ask before building the backup step.)
+
 ---
 
 ## Scope
 
-**Version 1 must have:**
+**Version 1 (done):**
 - Habit and task tracking, with the daily progress bar
 - The leveling and ascension system described above
 - Adding, editing and deleting habits and tasks
 - The sword placeholder for the adventurer
 - Swiping between screens, plus arrow keys on a computer
 - The "reset everything" button
+- Installable PWA, hosted on GitHub Pages
+
+**Version 2 (now), built in this order:**
+1. **Categories** (Strength, Mind, Constitution), with coloured pixel labels
+2. **Filters** on the Quests screen, plus hiding completed one-off quests behind a "Show completed" toggle
+3. **Export / import** backup of all data
 
 **Later (don't build yet):**
-- Adventurer artwork, with gear visible on the character
-- A calendar view
-- More screens or tabs
-- Export and backup of data
-- A more developed ascension system
+- **Notes screen:** a third screen, **to the left of the Main screen**, for quick free-form notes (e.g. a grocery list)
+- **Calendar view:** showing completed and missed days
+- **Category stats / a more developed ascension system:** e.g. exp earned per category builds up STR / MIND / CON stats for the adventurer
+- **Adventurer artwork**, with gear visible on the character
 
 **Out of scope:** user accounts, syncing between devices, notifications or reminders, an app store release, multiple users.
 

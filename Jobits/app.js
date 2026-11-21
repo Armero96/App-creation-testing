@@ -116,6 +116,82 @@ const TIMING_LABELS = {
 const TIMING_ORDER = ["morning", "noon", "afternoon", "evening", "anytime"];
 
 
+// ===== Categories and their pixel icons =====
+
+// Turn a little text picture into an SVG icon: every "X" becomes one pixel.
+// The icon uses the current text colour (fill: currentColor in the CSS).
+// Pictures can be any size; the CSS sets the height and the width follows.
+function pixelIcon(rows) {
+  const width = rows[0].length;
+  const height = rows.length;
+  let rects = "";
+  rows.forEach((row, y) => {
+    [...row].forEach((char, x) => {
+      if (char === "X") rects += `<rect x="${x}" y="${y}" width="1" height="1"/>`;
+    });
+  });
+  return `<svg viewBox="0 0 ${width} ${height}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+}
+
+// The three categories. "short" is shown on the small labels.
+const CATEGORIES = {
+  strength: {
+    name: "Strength",
+    short: "STR",
+    icon: pixelIcon([   // a flexed arm: fist up top, bicep bulge on the right
+      "..XX....",
+      ".XXX....",
+      ".XX.....",
+      ".XX..XX.",
+      ".XXXXXXX",
+      ".XXXXXXX",
+      "..XXXXX.",
+      "........",
+    ]),
+  },
+  mind: {
+    name: "Mind",
+    short: "MIND",
+    icon: pixelIcon([   // a brain seen from the side (front on the left):
+      "..XXXXXX..",     // folds as gaps, cerebellum at the back-bottom,
+      ".X.XX.X.X.",     // brainstem underneath. 10 wide, since a brain
+      "XX..X.XX.X",     // from the side is wider than it is tall.
+      "X.XX.X..XX",
+      "XXX..XXX.X",
+      ".XXXX.XXXX",
+      "....XX.XX.",
+      ".....X....",
+    ]),
+  },
+  constitution: {
+    name: "Constitution",
+    short: "CON",
+    icon: pixelIcon([   // a heart
+      ".XX..XX.",
+      "XXXXXXXX",
+      "XXXXXXXX",
+      "XXXXXXXX",
+      ".XXXXXX.",
+      "..XXXX..",
+      "...XX...",
+      "........",
+    ]),
+  },
+};
+
+// The small coloured label for a quest's category, or null if it has none.
+// (Quests made before categories existed have no category field at all.)
+function makeCategoryChip(category) {
+  if (!category || !CATEGORIES[category]) return null;
+  const chip = document.createElement("span");
+  chip.className = `category-chip cat-${category}`;
+  chip.title = CATEGORIES[category].name;   // full name when hovering
+  chip.innerHTML = CATEGORIES[category].icon; // fixed icon, no user text: safe
+  chip.append(CATEGORIES[category].short);
+  return chip;
+}
+
+
 // ===== When is a habit due? =====
 // Note: "YYYY-MM-DD" strings can be compared with < and > directly,
 // because they sort in the same order as the dates they stand for.
@@ -390,6 +466,8 @@ function makeTaskRow(habit, today, showTiming) {
   details.textContent = showTiming
     ? `${habit.exp} exp · ${TIMING_LABELS[habit.timing]}`
     : `${habit.exp} exp`;
+  const chip = makeCategoryChip(habit.category);
+  if (chip) details.prepend(chip);   // category label goes first on the line
 
   text.append(name, details);
   button.append(box, text);
@@ -476,6 +554,8 @@ function renderHabitList() {
     const details = document.createElement("p");
     details.className = "habit-details";
     details.textContent = `${habit.exp} exp · ${when} · ${TIMING_LABELS[habit.timing]}`;
+    const chip = makeCategoryChip(habit.category);
+    if (chip) details.prepend(chip);
 
     // Edit and Delete buttons for this habit
     const actions = document.createElement("div");
@@ -572,6 +652,33 @@ const repeatingCheckbox = document.getElementById("habit-repeating");
 const repeatOptions = document.getElementById("repeat-options");
 const repeatSelect = document.getElementById("habit-repeat");
 const formError = document.getElementById("form-error");
+const categoryButtons = document.querySelectorAll(".category-option");
+
+// The category chosen in the form (null = none)
+let selectedCategory = null;
+
+// Draw each sticker's pixel icon once, at start-up
+categoryButtons.forEach((button) => {
+  button.querySelector(".category-icon").innerHTML = CATEGORIES[button.dataset.category].icon;
+});
+
+// Choose a category in the form, and highlight only that sticker
+function selectCategory(category) {
+  selectedCategory = category;
+  categoryButtons.forEach((button) => {
+    const isChosen = button.dataset.category === category;
+    button.classList.toggle("selected", isChosen);
+    button.setAttribute("aria-pressed", isChosen);
+  });
+}
+
+// Tapping a sticker chooses it; tapping the chosen one again clears it
+categoryButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const category = button.dataset.category;
+    selectCategory(selectedCategory === category ? null : category);
+  });
+});
 
 function isFormOpen() {
   return !modal.hidden;
@@ -592,10 +699,12 @@ function openForm(habit = null) {
     timingSelect.value = habit.timing;
     repeatingCheckbox.checked = habit.repeat !== null;
     if (habit.repeat) repeatSelect.value = habit.repeat;
+    selectCategory(habit.category || null); // older quests have no category
   } else {
     editingId = null;
     formTitle.textContent = "New quest";
     dateInput.value = todayString();  // default date: today
+    selectCategory(null);
   }
 
   // Show the repeat options only if "Repeating" is ticked
@@ -646,6 +755,7 @@ form.addEventListener("submit", (event) => {
     date: date,
     repeat: repeatingCheckbox.checked ? repeatSelect.value : null, // null = one-off task
     timing: timingSelect.value,
+    category: selectedCategory, // null = no category
   };
 
   if (editingId === null) {

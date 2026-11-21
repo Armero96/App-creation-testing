@@ -1,0 +1,3 @@
+# Notes for next patch
+1) Introduce labelling system to organize goals/quests into different categories: strength, mind, constitution. They should add a small label/sticker on the goal, with a colour associated to each category. Strength = red, mind = blue, constitution = green. We could also put a small pixel emoji to represent each: Strength = strong arm. Mind = brain. Constitution = heart. 
+2) On the quests screen, it gets difficult to see at some point all the quests. I would like to introduce a filtering system, which allows to use the previously assigned labels, or also whether they are one-off, repeating tasks.

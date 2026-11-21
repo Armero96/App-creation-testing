@@ -11,6 +11,7 @@
 const STORAGE_KEY = "jobits.habits";
 const COMPLETIONS_KEY = "jobits.completions";
 const COMPLETED_DAYS_KEY = "jobits.completedDays";
+const FILTERS_KEY = "jobits.filters";   // the Quests screen's last chosen filters
 
 // Read something from localStorage; if it's missing or broken, use the fallback
 function loadFromStorage(key, fallback) {
@@ -534,12 +535,88 @@ function renderAll() {
 
 const habitList = document.getElementById("habit-list");
 const habitsEmpty = document.getElementById("habits-empty");
+const habitsNoMatch = document.getElementById("habits-no-match");
+
+
+// ===== Habits screen: filters =====
+
+// The filters as they are when nothing has been chosen yet
+const DEFAULT_FILTERS = {
+  category: "all",      // "all" | "strength" | "mind" | "constitution" | "none"
+  type: "all",          // "all" | "oneoff" | "repeating"
+  showCompleted: false, // show one-off quests that are already done?
+};
+
+// Load the last chosen filters. Spreading DEFAULT_FILTERS first fills in
+// anything missing, e.g. if a future version adds a new filter.
+let filters = { ...DEFAULT_FILTERS, ...loadFromStorage(FILTERS_KEY, {}) };
+
+function saveFilters() {
+  localStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+}
+
+// Should this quest be shown with the current filters?
+function matchesFilters(habit, today) {
+  // Category: "none" means quests without a category (older ones have no field at all)
+  if (filters.category === "none" && habit.category) return false;
+  if (filters.category !== "all" && filters.category !== "none"
+      && habit.category !== filters.category) return false;
+
+  // Type: one-off tasks have repeat === null
+  if (filters.type === "oneoff" && habit.repeat) return false;
+  if (filters.type === "repeating" && !habit.repeat) return false;
+
+  // Done one-off quests are hidden unless "Show completed" is ticked.
+  // (Repeating habits are never "finished", so they always pass this check.)
+  if (!filters.showCompleted && !habit.repeat && isDone(habit, today)) return false;
+
+  return true;
+}
+
+const filterButtons = document.querySelectorAll(".filter-option");
+const showCompletedBox = document.getElementById("show-completed");
+
+// Light up the chosen option in each row, and tick the box if needed
+function renderFilterControls() {
+  filterButtons.forEach((button) => {
+    const isChosen = filters[button.dataset.group] === button.dataset.value;
+    button.classList.toggle("selected", isChosen);
+    button.setAttribute("aria-pressed", isChosen);
+  });
+  showCompletedBox.checked = filters.showCompleted;
+}
+
+// Tapping an option chooses it for its row (category or type)
+filterButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    filters[button.dataset.group] = button.dataset.value;
+    saveFilters();
+    renderFilterControls();
+    renderHabitList();
+  });
+});
+
+showCompletedBox.addEventListener("change", () => {
+  filters.showCompleted = showCompletedBox.checked;
+  saveFilters();
+  renderHabitList();
+});
+
+renderFilterControls(); // show the remembered filters at start-up
+
+
+// ===== Habits screen: the list itself =====
 
 function renderHabitList() {
   habitList.innerHTML = "";              // clear the old list
-  habitsEmpty.hidden = habits.length > 0; // "No habits yet" only if empty
+  habitsEmpty.hidden = habits.length > 0; // "No quests yet" only if empty
 
-  for (const habit of habits) {
+  const today = todayString();
+  const shown = habits.filter((habit) => matchesFilters(habit, today));
+  // "No quests match" only if there are quests, but the filters hide them all
+  habitsNoMatch.hidden = habits.length === 0 || shown.length > 0;
+
+  for (const habit of shown) {
     const item = document.createElement("li");
     item.className = "habit-item";
 

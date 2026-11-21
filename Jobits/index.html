@@ -57,8 +57,34 @@
       <!-- ===== Screen 2: Habits ===== -->
       <section class="screen" id="screen-habits" aria-label="Quests">
         <h1>Quests</h1>
+
+        <!-- Filters: one lit option per row; the two rows combine.
+             app.js reads data-group / data-value when a button is tapped. -->
+        <div class="filters">
+          <div class="filter-row" role="group" aria-labelledby="filter-category-label">
+            <span class="filter-label" id="filter-category-label">Category</span>
+            <button type="button" class="filter-option" data-group="category" data-value="all">All</button>
+            <button type="button" class="filter-option cat-strength" data-group="category" data-value="strength">STR</button>
+            <button type="button" class="filter-option cat-mind" data-group="category" data-value="mind">MIND</button>
+            <button type="button" class="filter-option cat-constitution" data-group="category" data-value="constitution">CON</button>
+            <button type="button" class="filter-option" data-group="category" data-value="none">None</button>
+          </div>
+          <div class="filter-row" role="group" aria-labelledby="filter-type-label">
+            <span class="filter-label" id="filter-type-label">Type</span>
+            <button type="button" class="filter-option" data-group="type" data-value="all">All</button>
+            <button type="button" class="filter-option" data-group="type" data-value="oneoff">One-off</button>
+            <button type="button" class="filter-option" data-group="type" data-value="repeating">Repeating</button>
+          </div>
+          <label class="checkbox-row filter-checkbox">
+            <input type="checkbox" id="show-completed">
+            Show completed
+          </label>
+        </div>
+
         <!-- Shown only when there are no habits saved -->
         <p class="placeholder" id="habits-empty">No quests yet</p>
+        <!-- Shown when there are quests, but the filters hide all of them -->
+        <p class="placeholder" id="habits-no-match" hidden>No quests match these filters</p>
         <!-- app.js fills this list with one <li> per saved habit -->
         <ul class="habit-list" id="habit-list"></ul>
 

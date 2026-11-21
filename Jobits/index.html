@@ -193,8 +193,11 @@
       </div>
 
       <!-- app.js changes this label to "Deadline (optional)" for standing quests -->
-      <label for="habit-date" id="date-label">Date</label>
-      <input type="date" id="habit-date">
+      <!-- The date is kept in a hidden field ("YYYY-MM-DD" or empty).
+           The button shows it, and opens Jobits' own date picker (weeks start on Monday). -->
+      <label for="habit-date-button" id="date-label">Date</label>
+      <input type="hidden" id="habit-date">
+      <button type="button" class="date-button" id="habit-date-button"></button>
       <button type="button" class="small-button" id="no-deadline" hidden>No deadline</button>
 
       <div id="timing-field">
@@ -311,6 +314,24 @@
       <!-- Details of the tapped day -->
       <div class="calendar-details" id="calendar-details"></div>
       <button type="button" class="button-secondary calendar-close" id="calendar-close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== Date picker popup =====
+       Opened from the quest form's date button; sits on top of the form. -->
+  <div class="modal picker-modal" id="picker-modal" hidden>
+    <div class="habit-form calendar-dialog" role="dialog" aria-labelledby="picker-title">
+      <div class="month-nav">
+        <button type="button" class="month-arrow" id="picker-prev" aria-label="Previous month">&lt;</button>
+        <h2 id="picker-title"></h2>
+        <button type="button" class="month-arrow" id="picker-next" aria-label="Next month">&gt;</button>
+      </div>
+      <!-- app.js fills this with the weekday names and one button per day -->
+      <div class="month-grid" id="picker-grid"></div>
+      <div class="form-buttons picker-buttons">
+        <button type="button" class="button-secondary" id="picker-cancel">Cancel</button>
+        <button type="button" class="button-primary" id="picker-today">Today</button>
+      </div>
     </div>
   </div>
 

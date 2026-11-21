@@ -1133,3 +1133,43 @@ h1, h2 {
   border: 4px solid var(--text);
   cursor: pointer;
 }
+
+/* ===== Date picker (quest form) ===== */
+
+/* The date "field": a button showing the chosen date, looking like an input */
+.date-button {
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--bg);
+  background: var(--text);
+  border: 4px solid var(--muted);
+  cursor: pointer;
+}
+
+/* "Pick a date" / "No deadline": greyed, like placeholder text */
+.date-button.empty {
+  color: var(--muted);
+}
+
+/* The picker opens on top of the quest form */
+.picker-modal {
+  z-index: 20;
+}
+
+/* Today: yellow outline. The chosen day: filled in yellow. */
+.picker-day.is-today {
+  border-color: var(--accent);
+}
+
+.picker-day.chosen {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.picker-buttons {
+  margin-top: 16px;
+}

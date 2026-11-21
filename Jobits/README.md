@@ -24,9 +24,12 @@ It's a Progressive Web App (PWA): it runs in the browser, can be installed on a 
 - **Ascension:** complete every day from Monday to Sunday for +1 ascension. The ascension counter never resets.
 - **Categories:** a quest can be tagged **Strength** (red, arm), **Mind** (blue, brain) or **Constitution** (green, heart), shown as a small pixel label.
 - **Filters** on the Quests screen narrow the list by category and by type (one-off or repeating). Finished one-off quests are hidden unless you tick **Show completed**.
+- **Standing quests** are to-dos for "some point": no exp and no fixed day. They're listed at the bottom of the Main screen. One with a **deadline** must be done by that day, or that day doesn't count as completed.
+- **Calendar:** tap today's date on the Main screen to see a month with completed days in green and missed days in pink. Tap a day to see what you ticked.
+- **Notes:** a separate screen for quick notes, either free text or a checklist (handy for groceries), each with a pixel icon.
 - **Reset everything** (at the bottom of the Quests screen) wipes all data. It's meant for testing.
 
-Swipe left/right to switch between **Today** and **Quests** on a phone, or use the arrow keys on a computer.
+There are three screens: **Notes**, **Today** and **Quests**, in that order. The app opens on Today. Swipe left/right to switch on a phone, or use the arrow keys on a computer.
 
 ## Install it on your phone
 
@@ -41,7 +44,7 @@ Everything is saved in your browser's local storage, **on your device only**. No
 
 - **Version 1:** daily quests with time-of-day slots and repeat rules, the day's progress bar, levels with a sword for each level, weekly reset and ascension, two swipeable screens, installable as a phone app.
 - **Version 2:** quest categories (Strength, Mind, Constitution) with pixel labels, filters on the Quests screen, and export/import backups.
-- **Version 3** *(in progress)*: standing quests with optional deadlines, today's date on the Main screen, a Notes screen and a calendar view.
+- **Version 3:** standing quests with optional deadlines, today's date on the Main screen, a Notes screen (free-text and checklist notes with pixel icons), a calendar of completed and missed days, and a Monday-first date picker.
 
 ## Run it locally
 
@@ -58,9 +61,9 @@ Then open http://localhost:8000. After changing code, use a hard reload (**Ctrl 
 
 | File | Purpose |
 |------|---------|
-| `index.html` | Page structure: the two screens and the quest form |
+| `index.html` | Page structure: the three screens and the popups (quest form, note form, calendar, date picker, import) |
 | `style.css` | 8-bit look and layout |
-| `app.js` | All the app logic: quests, repeat rules, ticking, levels, saving |
+| `app.js` | All the app logic: quests, repeat rules, ticking, levels, notes, calendar, backup, saving |
 | `sw.js` | Service worker: keeps a copy of the app for offline use |
 | `manifest.json` | App name, colours and icons, for installing |
 | `icons/` | Home-screen icons |

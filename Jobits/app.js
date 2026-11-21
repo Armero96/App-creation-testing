@@ -1050,7 +1050,7 @@ function openForm(habit = null) {
     nameInput.value = habit.name;
     standingCheckbox.checked = habit.standing === true;
     expInput.value = habit.standing ? "" : habit.exp;
-    dateInput.value = habit.date || "";  // standing quests may have no deadline
+    setFormDate(habit.date || "");       // standing quests may have no deadline
     timingSelect.value = habit.timing;
     repeatingCheckbox.checked = habit.repeat !== null;
     if (habit.repeat) repeatSelect.value = habit.repeat;
@@ -1058,7 +1058,7 @@ function openForm(habit = null) {
   } else {
     editingId = null;
     formTitle.textContent = "New quest";
-    dateInput.value = todayString();  // default date: today
+    setFormDate(todayString());       // default date: today
     selectCategory(null);
   }
 
@@ -1098,16 +1098,16 @@ function updateFormFields() {
 
 standingCheckbox.addEventListener("change", () => {
   if (standingCheckbox.checked && editingId === null) {
-    dateInput.value = "";                  // new standing quest: no deadline to start with
+    setFormDate("");                       // new standing quest: no deadline to start with
   } else if (!standingCheckbox.checked && dateInput.value === "") {
-    dateInput.value = todayString();       // normal quests need a date: default today
+    setFormDate(todayString());            // normal quests need a date: default today
+  } else {
+    setFormDate(dateInput.value);          // just update the button's wording
   }
   updateFormFields();
 });
 
-noDeadlineButton.addEventListener("click", () => {
-  dateInput.value = "";
-});
+noDeadlineButton.addEventListener("click", () => setFormDate(""));
 
 // "Save" pressed (or Enter in a field)
 form.addEventListener("submit", (event) => {
@@ -1747,6 +1747,93 @@ document.getElementById("calendar-prev").addEventListener("click", () => changeC
 document.getElementById("calendar-next").addEventListener("click", () => changeCalendarMonth(1));
 
 
+// ===== Date picker (quest form) =====
+// Jobits' own date picker, so weeks start on Monday whatever the phone's
+// settings. The chosen date lives in the hidden #habit-date field; the
+// button in the form shows it in words.
+
+const dateButton = document.getElementById("habit-date-button");
+const pickerModal = document.getElementById("picker-modal");
+const pickerTitle = document.getElementById("picker-title");
+const pickerGrid = document.getElementById("picker-grid");
+
+let pickerYear = 0;
+let pickerMonth = 0;
+
+// e.g. "Sat 21 Nov 2026"
+function formatLongDate(dateString) {
+  return parseDate(dateString).toLocaleDateString("en-GB", {
+    weekday: "short", day: "numeric", month: "short", year: "numeric",
+  }).replace(",", ""); // some browsers put a comma after the weekday
+}
+
+// Set the form's date ("" = none) and update the button's text
+function setFormDate(dateString) {
+  dateInput.value = dateString;
+  if (dateString) {
+    dateButton.textContent = formatLongDate(dateString);
+  } else {
+    // Standing quests may have no deadline; other quests need a date
+    dateButton.textContent = standingCheckbox.checked ? "No deadline" : "Pick a date";
+  }
+  dateButton.classList.toggle("empty", !dateString);
+}
+
+// One day in the picker: today outlined, the chosen day filled in
+function makePickerDay(day) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "calendar-day picker-day";
+  if (day === todayString()) button.classList.add("is-today");
+  if (day === dateInput.value) button.classList.add("chosen");
+  button.textContent = Number(day.slice(8)); // "2026-11-05" -> 5
+  button.setAttribute("aria-label", formatLongDate(day));
+  button.addEventListener("click", () => {
+    setFormDate(day);
+    closePicker();
+  });
+  return button;
+}
+
+function renderPicker() {
+  pickerTitle.textContent = formatMonthTitle(pickerYear, pickerMonth);
+  buildMonthGrid(pickerGrid, pickerYear, pickerMonth, makePickerDay);
+}
+
+function changePickerMonth(step) {
+  const date = new Date(pickerYear, pickerMonth + step, 1);
+  pickerYear = date.getFullYear();
+  pickerMonth = date.getMonth();
+  renderPicker();
+}
+
+// Open on the month of the chosen date (or this month, if none yet)
+function openPicker() {
+  const start = parseDate(dateInput.value || todayString());
+  pickerYear = start.getFullYear();
+  pickerMonth = start.getMonth();
+  renderPicker();
+  pickerModal.hidden = false;
+}
+
+function closePicker() {
+  pickerModal.hidden = true;
+}
+
+function isPickerOpen() {
+  return !pickerModal.hidden;
+}
+
+dateButton.addEventListener("click", openPicker);
+document.getElementById("picker-prev").addEventListener("click", () => changePickerMonth(-1));
+document.getElementById("picker-next").addEventListener("click", () => changePickerMonth(1));
+document.getElementById("picker-cancel").addEventListener("click", closePicker);
+document.getElementById("picker-today").addEventListener("click", () => {
+  setFormDate(todayString());
+  closePicker();
+});
+
+
 // ===== Screen switching =====
 // Screen 0 = Notes, screen 1 = Main (today), screen 2 = Quests (habits).
 
@@ -1776,6 +1863,11 @@ function showScreen(index) {
 
 // ----- Keyboard (computer) -----
 document.addEventListener("keydown", (event) => {
+  // The date picker sits on top of the quest form: Escape closes just the picker
+  if (isPickerOpen()) {
+    if (event.key === "Escape") closePicker();
+    return;
+  }
   // While the form is open, arrow keys are for moving the cursor in text
   // fields, not for switching screens. Escape closes the form.
   if (isFormOpen()) {

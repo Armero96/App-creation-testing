@@ -80,11 +80,21 @@ A standing quest is a to-do for "at some point", not for a specific day.
 
 ### Screen 0 — Notes (version 3; reached by swiping right from the Main screen)
 
-A screen **to the left of the Main screen** for quick free-form notes (e.g. a grocery list). Each note can have an **icon**, chosen from a small set of pixel icons. Details: see *Open questions*.
+A screen **to the left of the Main screen** for quick notes (e.g. a grocery list). The app still opens on the Main screen.
+- A list of note cards, and a **+ button** (only on this screen) to add one.
+- Each note has a **title** (required) and an optional **icon**, chosen from 8 pixel icons: shopping cart, book, star, light bulb, house, gift, music note, pin.
+- When creating a note you choose its **kind**, which can't be changed later:
+  - **Free text:** a text box. The card shows the first few lines; tapping it opens the note to edit.
+  - **Checklist:** items are managed right on the card: tap an item to tick it (crossed out), **✕** deletes it, and an "Add item" field adds one. The title shows progress, e.g. "2/5". Tapping the title edits the title and icon.
+- A note can be deleted from its edit form (two taps).
+- Notes don't affect the game. They're included in backups, and "Reset everything" wipes them too.
 
 ### Calendar view (version 3)
 
-Shows which days were **completed** and which were **missed**. Weeks start on **Monday**. Details: see *Open questions*.
+A popup opened by **tapping today's date** on the Main screen. It shows one month at a time (arrows for the previous/next month), with weeks starting on **Monday**.
+- **Completed** days are green, **missed** days pink, today has a yellow outline, and future days are plain.
+- Days before the **first day anything was ticked** count as "not tracked" (plain), not missed, since the app never stored when it was first used.
+- **Tapping a day** (not in the future) shows its result and the quests ticked that day.
 
 The quest form's date field also gets **Jobits' own pixel-style date picker**, built from the same month grid, so its weeks start on **Monday** too. (The phone's built-in picker follows the phone's region settings, which the app can't change.)
 
@@ -160,8 +170,7 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
 
 ## Open questions (ask me before building these parts)
 
-- **Notes screen:** one big free-text box, or a list of separate items that can be ticked off and deleted? Which pixel icons should be offered for notes (e.g. shopping cart, book, star…)? (Ask before building it.)
-- **Calendar view:** where does it live (a new screen, or a popup from the Main screen), and what does it show for each day (completed / missed only, or also the exp earned)? (Ask before building it.)
+- None right now. Add new ones here as they come up.
 
 ---
 
@@ -181,7 +190,7 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
 2. **Filters** on the Quests screen, plus hiding completed one-off quests behind a "Show completed" toggle
 3. **Export / import** backup of all data
 
-**Version 3 (now), built in this order:**
+**Version 3 (done):**
 1. **Quick fixes:** no automatic keyboard when editing a quest; today's date on the Main screen
 2. **Standing quests**, with optional deadlines
 3. **Notes screen**, to the left of the Main screen

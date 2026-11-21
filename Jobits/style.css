@@ -67,9 +67,19 @@ html, body {
 
 /* ===== Main screen pieces ===== */
 
-.ascension {
-  text-align: right;
+/* Date on the left, ascension on the right, on one line */
+.top-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
   font-size: 10px;
+}
+
+.today-date {
+  color: var(--text);
+}
+
+.ascension {
   color: var(--accent);
 }
 

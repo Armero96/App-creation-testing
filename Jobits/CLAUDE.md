@@ -27,18 +27,21 @@ I add habits and tasks, tick them off each day, and earn experience (exp). Compl
 
 ## Screens
 
-The app has **two main screens**. You switch between them by **swiping left/right** on a phone, or with the **left/right arrow keys** on a computer.
+The app has **two main screens** (*(Version 3)* three, with the Notes screen). You switch between them by **swiping left/right** on a phone, or with the **left/right arrow keys** on a computer.
 
 ### Screen 1 — Main screen (today)
 
 From top to bottom:
 1. **Ascension counter**: small, in the top-right corner.
+   *(Version 3)* **Today's date** is shown at the top of the screen (e.g. "Sat 21 Nov").
 2. **The adventurer**: in version 1, this is a **placeholder showing the current sword** (see *Levels and gear*).
 3. **Day progress bar**: fills up with the exp earned today, out of today's total.
 4. **Carried-over tasks**: one-off tasks from earlier days that weren't completed, shown at the top of the list.
 5. **Today's tasks**: each one can be ticked as completed, which adds its exp to the day bar.
    Tasks are grouped into **time-of-day slots** (morning, noon, afternoon, evening), each with a small label and a faint horizontal separator, so the list reads like a timeline of the day. All four slots are always shown, even when empty; an "any time" slot is added at the end only if it has tasks. Ticked tasks show **two crossed swords** in their box.
    *(Version 2)* Each task shows its **category label** (see *Categories*), if it has one.
+6. *(Version 3)* **Standing quests**: a section at the bottom with all unfinished standing quests (see *Standing quests*), which can be ticked there. They never count towards the day's progress bar.
+   If an unfinished standing quest has its **deadline today**, a line under the progress bar says so (e.g. "1 standing quest due today"), and the day can't be completed until it's ticked.
 
 ### Screen 2 — Quests (habits and tasks; reached by swiping left)
 
@@ -47,11 +50,11 @@ From top to bottom:
 - *(Version 2)* Each quest shows its **category label**, if it has one.
 - *(Version 2)* **Filters** above the list, as two rows of tappable options that combine (e.g. *Mind + Repeating*):
   - **Category:** All · Strength · Mind · Constitution · None
-  - **Type:** All · One-off · Repeating
+  - **Type:** All · One-off · Repeating · *(Version 3)* Standing
   - The last chosen filters are remembered.
-- *(Version 2)* **Completed one-off quests are hidden** from the list by default. A **"Show completed"** toggle shows them again.
+- *(Version 2)* **Completed one-off quests are hidden** (*(Version 3)* and completed standing quests) from the list by default. A **"Show completed"** toggle shows them again.
 - *(Version 2)* **Export / Import** buttons for backing up all data (see *Data backup*).
-- A **+ button** opens a form to add a new one, with:
+- A **+ button** opens a form to add a new one. *(Version 3)* The cursor goes into the name field (opening the phone's keyboard) only for a **new** quest; when **editing**, the keyboard only opens after tapping a text field. The form has:
   - **Name**
   - **Exp value**: how much it's worth (e.g. brushing teeth = 5, cleaning the kitchen = 25)
   - **Date**: when it's due (for repeating habits, the start date)
@@ -63,6 +66,27 @@ From top to bottom:
     - every second day (counted from the start date)
     - every week (same weekday as the start date)
     - every month (same day of the month as the start date; if that month is shorter, e.g. the 31st in November, it's due on the **last day of the month** instead)
+  - *(Version 3)* **"Standing" option**: makes it a standing quest. The exp, time of day and repeat fields are hidden, and the date becomes an optional **deadline**.
+
+### Standing quests (version 3)
+
+A standing quest is a to-do for "at some point", not for a specific day.
+- It gives **no exp**, never repeats, and can have a category.
+- It can have an optional **deadline**. Without one, it never blocks anything.
+- It's shown in the *Standing quests* section of the Main screen until it's ticked, and can be ticked on any day.
+- **On its deadline day**, if it's still unfinished, it counts as one of that day's tasks: the day can't be completed (no level-up) until it's ticked.
+- **After the deadline**, if it's still unfinished, it stays in the Standing section **marked as overdue**, but it doesn't block any more days. Only the deadline day was lost.
+- Once ticked, it's done for good (like a one-off quest), and is hidden on the Quests screen unless "Show completed" is ticked.
+
+### Screen 0 — Notes (version 3; reached by swiping right from the Main screen)
+
+A screen **to the left of the Main screen** for quick free-form notes (e.g. a grocery list). Each note can have an **icon**, chosen from a small set of pixel icons. Details: see *Open questions*.
+
+### Calendar view (version 3)
+
+Shows which days were **completed** and which were **missed**. Weeks start on **Monday**. Details: see *Open questions*.
+
+The quest form's date field also gets **Jobits' own pixel-style date picker**, built from the same month grid, so its weeks start on **Monday** too. (The phone's built-in picker follows the phone's region settings, which the app can't change.)
 
 ### Categories (version 2)
 
@@ -136,7 +160,8 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
 
 ## Open questions (ask me before building these parts)
 
-- None right now. Add new ones here as they come up.
+- **Notes screen:** one big free-text box, or a list of separate items that can be ticked off and deleted? Which pixel icons should be offered for notes (e.g. shopping cart, book, star…)? (Ask before building it.)
+- **Calendar view:** where does it live (a new screen, or a popup from the Main screen), and what does it show for each day (completed / missed only, or also the exp earned)? (Ask before building it.)
 
 ---
 
@@ -151,14 +176,18 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
 - The "reset everything" button
 - Installable PWA, hosted on GitHub Pages
 
-**Version 2 (now), built in this order:**
+**Version 2 (done):**
 1. **Categories** (Strength, Mind, Constitution), with coloured pixel labels
 2. **Filters** on the Quests screen, plus hiding completed one-off quests behind a "Show completed" toggle
 3. **Export / import** backup of all data
 
+**Version 3 (now), built in this order:**
+1. **Quick fixes:** no automatic keyboard when editing a quest; today's date on the Main screen
+2. **Standing quests**, with optional deadlines
+3. **Notes screen**, to the left of the Main screen
+4. **Calendar view** of completed and missed days, plus a matching **date picker** for the quest form (both with Monday as the first day)
+
 **Later (don't build yet):**
-- **Notes screen:** a third screen, **to the left of the Main screen**, for quick free-form notes (e.g. a grocery list)
-- **Calendar view:** showing completed and missed days
 - **Category stats / a more developed ascension system:** e.g. exp earned per category builds up STR / MIND / CON stats for the adventurer
 - **Adventurer artwork**, with gear visible on the character
 

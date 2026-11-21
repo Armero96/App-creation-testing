@@ -1,3 +1,4 @@
 # Notes for next patch
-1) Introduce labelling system to organize goals/quests into different categories: strength, mind, constitution. They should add a small label/sticker on the goal, with a colour associated to each category. Strength = red, mind = blue, constitution = green. We could also put a small pixel emoji to represent each: Strength = strong arm. Mind = brain. Constitution = heart. 
-2) On the quests screen, it gets difficult to see at some point all the quests. I would like to introduce a filtering system, which allows to use the previously assigned labels, or also whether they are one-off, repeating tasks.
+1) When editing a quest, the text menu automatically opens. I would like it to open only if I click to edit the name of the quest.
+2) New option for quests: a standing quest, that does not provide exp for any day, but basically represent a task that should be done at some point.
+3) Show the date of today in the main screen.

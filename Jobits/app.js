@@ -76,6 +76,13 @@ function parseDate(dateString) {
 }
 
 // Turn "2026-11-20" into something friendlier like "20 Nov 2026"
+// Short date with the weekday, for the top of the Main screen, e.g. "Sat 21 Nov"
+function formatDayLabel(dateString) {
+  return parseDate(dateString).toLocaleDateString("en-GB", {
+    weekday: "short", day: "numeric", month: "short",
+  }).replace(",", ""); // some browsers put a comma after the weekday
+}
+
 function formatDate(dateString) {
   return parseDate(dateString).toLocaleDateString("en-GB", {
     day: "numeric", month: "short", year: "numeric",
@@ -370,6 +377,7 @@ const levelLabel = document.getElementById("level-label");
 const levelUpMessage = document.getElementById("level-up");
 const swordName = document.getElementById("sword-name");
 const ascensionLabel = document.getElementById("ascension-label");
+const todayDateLabel = document.getElementById("today-date");
 
 const LEVEL_UP_TIME = 3000; // how long the message stays, in milliseconds
 
@@ -393,6 +401,8 @@ function renderLevel() {
   levelLabel.textContent = `Level ${level}`;
   swordName.textContent = `${SWORDS[level - 1]} sword`;
   ascensionLabel.textContent = `Ascension: ${ascension}`;
+  // Today's date; redrawn with everything else, so it also changes at midnight
+  todayDateLabel.textContent = formatDayLabel(todayString());
 
   // Pop up a message only when something went up since the last redraw
   if (shownAscension !== null && ascension > shownAscension) {
@@ -949,7 +959,10 @@ function openForm(habit = null) {
   // Show the repeat options only if "Repeating" is ticked
   repeatOptions.hidden = !repeatingCheckbox.checked;
   modal.hidden = false;
-  nameInput.focus();                  // put the cursor in the name field
+  // For a new quest, put the cursor in the name field (you always type one).
+  // When editing, don't: on a phone that would pop up the keyboard and cover
+  // the form, even if you only wanted to change e.g. the category.
+  if (!habit) nameInput.focus();
 }
 
 function closeForm() {

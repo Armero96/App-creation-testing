@@ -22,6 +22,8 @@ It's a Progressive Web App (PWA): it runs in the browser, can be installed on a 
 - **Missed days** give no level-up; you just continue from the same level the next day.
 - **Weekly reset:** every Monday the level goes back to 1.
 - **Ascension:** complete every day from Monday to Sunday for +1 ascension. The ascension counter never resets.
+- **Categories:** a quest can be tagged **Strength** (red, arm), **Mind** (blue, brain) or **Constitution** (green, heart), shown as a small pixel label.
+- **Filters** on the Quests screen narrow the list by category and by type (one-off or repeating). Finished one-off quests are hidden unless you tick **Show completed**.
 - **Reset everything** (at the bottom of the Quests screen) wipes all data. It's meant for testing.
 
 Swipe left/right to switch between **Today** and **Quests** on a phone, or use the arrow keys on a computer.
@@ -33,7 +35,13 @@ Swipe left/right to switch between **Today** and **Quests** on a phone, or use t
 
 ## Your data
 
-Everything is saved in your browser's local storage, **on your device only**. Nothing is sent anywhere, there are no accounts, and each device keeps its own separate data. Clearing the browser's site data (or uninstalling the app) erases it.
+Everything is saved in your browser's local storage, **on your device only**. Nothing is sent anywhere, there are no accounts, and each device keeps its own separate data. Clearing the browser's site data (or uninstalling the app) erases it, so use **Export** (on the Quests screen) now and then to save a backup file. **Import** loads a backup again, and asks whether to **replace** the current data or **merge** the two.
+
+## Version history
+
+- **Version 1:** daily quests with time-of-day slots and repeat rules, the day's progress bar, levels with a sword for each level, weekly reset and ascension, two swipeable screens, installable as a phone app.
+- **Version 2:** quest categories (Strength, Mind, Constitution) with pixel labels, filters on the Quests screen, and export/import backups.
+- **Version 3** *(in progress)*: standing quests with optional deadlines, today's date on the Main screen, a Notes screen and a calendar view.
 
 ## Run it locally
 

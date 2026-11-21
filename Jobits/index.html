@@ -35,7 +35,12 @@
       <section class="screen" id="screen-main" aria-label="Today">
         <!-- Top line: today's date on the left, ascension on the right -->
         <div class="top-line">
-          <div class="today-date" id="today-date"></div>
+          <!-- Today's date; tapping it opens the calendar.
+               app.js draws the small calendar icon and fills in the date. -->
+          <button type="button" class="today-date" id="today-date" aria-label="Open calendar">
+            <span class="today-date-icon" id="today-date-icon"></span>
+            <span id="today-date-text"></span>
+          </button>
           <div class="ascension" id="ascension-label">Ascension: 0</div>
         </div>
 
@@ -285,6 +290,28 @@
       <!-- Only shown when editing an existing note (two taps) -->
       <button type="button" class="note-delete" id="note-delete" hidden>Delete note</button>
     </form>
+  </div>
+
+  <!-- ===== Calendar popup =====
+       Opened by tapping the date on the Main screen. -->
+  <div class="modal" id="calendar-modal" hidden>
+    <div class="habit-form calendar-dialog" role="dialog" aria-labelledby="calendar-title">
+      <!-- Month name with arrows to the previous / next month -->
+      <div class="month-nav">
+        <button type="button" class="month-arrow" id="calendar-prev" aria-label="Previous month">&lt;</button>
+        <h2 id="calendar-title"></h2>
+        <button type="button" class="month-arrow" id="calendar-next" aria-label="Next month">&gt;</button>
+      </div>
+      <!-- app.js fills this with the weekday names and one square per day -->
+      <div class="month-grid" id="calendar-grid"></div>
+      <p class="calendar-legend">
+        <span class="legend-swatch completed"></span>Completed
+        <span class="legend-swatch missed"></span>Missed
+      </p>
+      <!-- Details of the tapped day -->
+      <div class="calendar-details" id="calendar-details"></div>
+      <button type="button" class="button-secondary calendar-close" id="calendar-close">Close</button>
+    </div>
   </div>
 
   <!-- ===== "Import backup" popup =====

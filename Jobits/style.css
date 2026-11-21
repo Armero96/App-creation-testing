@@ -71,12 +71,30 @@ html, body {
 .top-line {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   font-size: 10px;
 }
 
+/* Today's date: a button (it opens the calendar) that looks like plain text */
 .today-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0;
+  font-family: inherit;
+  font-size: 10px;
   color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.today-date-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: var(--accent);
 }
 
 .ascension {
@@ -975,6 +993,143 @@ h1, h2 {
   font-size: 16px;
   color: var(--bg);
   background: var(--pink);
+  border: 4px solid var(--text);
+  cursor: pointer;
+}
+
+/* ===== Calendar popup ===== */
+
+/* Month name between the < and > arrows */
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.month-nav h2 {
+  margin: 0;
+  font-size: 12px;
+}
+
+.month-arrow {
+  width: 44px;
+  height: 44px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--panel);
+  border: 4px solid var(--text);
+  cursor: pointer;
+}
+
+/* 7 columns: Monday to Sunday */
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.month-weekday {
+  text-align: center;
+  font-size: 8px;
+  color: var(--muted);
+}
+
+/* One square per day */
+.calendar-day {
+  aspect-ratio: 1;             /* always square */
+  padding: 0;
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--text);
+  background: var(--panel);
+  border: 3px solid var(--panel);
+  cursor: pointer;
+}
+
+.calendar-day.completed {
+  color: var(--bg);
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.calendar-day.missed {
+  color: var(--bg);
+  background: var(--pink);
+  border-color: var(--pink);
+}
+
+/* Future days and days before you started: plain and faded */
+.calendar-day.future,
+.calendar-day.untracked {
+  color: var(--muted);
+  background: none;
+  border-color: transparent;
+  cursor: default;
+}
+
+/* Today: yellow outline (on top of green, if it's already completed) */
+.calendar-day.is-today {
+  border-color: var(--accent);
+}
+
+/* The tapped day: an off-white frame around it */
+.calendar-day.selected {
+  outline: 3px solid var(--text);
+  outline-offset: 1px;
+}
+
+/* Small coloured squares explaining the colours */
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+  font-size: 8px;
+  color: var(--muted);
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  margin-left: 8px;
+}
+
+.legend-swatch:first-child {
+  margin-left: 0;
+}
+
+.legend-swatch.completed { background: var(--green); }
+.legend-swatch.missed    { background: var(--pink); }
+
+.calendar-details {
+  min-height: 64px;            /* keeps the Close button from jumping around */
+  margin-top: 12px;
+  font-size: 10px;
+}
+
+.calendar-details-title {
+  margin: 0 0 6px;
+  color: var(--accent);
+}
+
+.calendar-details .placeholder {
+  margin: 0;
+}
+
+.calendar-ticked {
+  margin: 0;
+  padding-left: 16px;
+  overflow-wrap: anywhere;
+}
+
+.calendar-close {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 12px;
+  font-family: inherit;
+  font-size: 12px;
   border: 4px solid var(--text);
   cursor: pointer;
 }

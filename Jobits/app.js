@@ -407,7 +407,7 @@ const levelLabel = document.getElementById("level-label");
 const levelUpMessage = document.getElementById("level-up");
 const swordName = document.getElementById("sword-name");
 const ascensionLabel = document.getElementById("ascension-label");
-const todayDateLabel = document.getElementById("today-date");
+const todayDateLabel = document.getElementById("today-date-text");
 
 const LEVEL_UP_TIME = 3000; // how long the message stays, in milliseconds
 
@@ -1567,6 +1567,186 @@ noteDeleteButton.addEventListener("click", () =>
 );
 
 
+// ===== Month grid =====
+// Draws one month as a grid of days, weeks starting on Monday.
+// Shared by the calendar (and, later, the date picker): each one decides
+// what a day looks like by passing in its own makeDay function.
+
+const WEEKDAY_HEADERS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+
+// month: 0 = January ... 11 = December (like JavaScript's Date)
+function buildMonthGrid(container, year, month, makeDay) {
+  container.innerHTML = "";
+
+  for (const name of WEEKDAY_HEADERS) {
+    const header = document.createElement("span");
+    header.className = "month-weekday";
+    header.textContent = name;
+    container.append(header);
+  }
+
+  // Empty squares before the 1st, so it lands under the right weekday.
+  // getDay() counts from Sunday (0); "+ 6) % 7" makes Monday 0 instead.
+  const blanks = (new Date(year, month, 1).getDay() + 6) % 7;
+  for (let i = 0; i < blanks; i++) {
+    container.append(document.createElement("span"));
+  }
+
+  // "Day 0 of next month" is the last day of this month
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  for (let day = 1; day <= daysInMonth; day++) {
+    container.append(makeDay(dateToString(new Date(year, month, day))));
+  }
+}
+
+// e.g. "November 2026"
+function formatMonthTitle(year, month) {
+  return new Date(year, month, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+}
+
+
+// ===== Calendar popup =====
+
+const calendarModal = document.getElementById("calendar-modal");
+const calendarTitle = document.getElementById("calendar-title");
+const calendarGrid = document.getElementById("calendar-grid");
+const calendarDetails = document.getElementById("calendar-details");
+
+let calendarYear = 0;
+let calendarMonth = 0;
+let calendarSelected = null; // the tapped day, "YYYY-MM-DD"
+
+// The small calendar icon next to today's date
+document.getElementById("today-date-icon").innerHTML = pixelIcon([
+  ".X....X.",
+  "XXXXXXXX",
+  "XXXXXXXX",
+  "X......X",
+  "X.X.X.XX",
+  "X......X",
+  "X.X.X..X",
+  "XXXXXXXX",
+]);
+
+// The first day anything was ticked. The app never stored when you started
+// using it, so days before this aren't counted as missed.
+function firstTrackedDay() {
+  const days = [...Object.keys(completions), ...Object.keys(completedDays)].sort();
+  return days.length > 0 ? days[0] : null;
+}
+
+// How did a day go? "completed", "missed", "today", "future" or "untracked"
+function dayStatus(day, today) {
+  if (completedDays[day]) return "completed";
+  if (day > today) return "future";
+  if (day === today) return "today";
+  const first = firstTrackedDay();
+  if (first === null || day < first) return "untracked";
+  return "missed";
+}
+
+const STATUS_LABELS = {
+  completed: "Completed",
+  missed: "Missed",
+  today: "In progress",
+  untracked: "Not tracked",
+};
+
+// One square in the calendar
+function makeCalendarDay(day) {
+  const today = todayString();
+  const status = dayStatus(day, today);
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `calendar-day ${status}`;
+  if (day === today) button.classList.add("is-today");
+  if (day === calendarSelected) button.classList.add("selected");
+  button.textContent = Number(day.slice(8)); // "2026-11-05" -> 5
+  button.setAttribute("aria-label", `${formatDayLabel(day)}: ${STATUS_LABELS[status] || "future"}`);
+
+  if (status === "future") {
+    button.disabled = true; // nothing to show yet
+  } else {
+    button.addEventListener("click", () => {
+      calendarSelected = day;
+      renderCalendar();
+    });
+  }
+  return button;
+}
+
+// Under the grid: the tapped day's result and the quests ticked that day
+function renderCalendarDetails() {
+  calendarDetails.innerHTML = "";
+  if (!calendarSelected) return;
+
+  const today = todayString();
+  const title = document.createElement("p");
+  title.className = "calendar-details-title";
+  title.textContent = `${formatDayLabel(calendarSelected)} · ${STATUS_LABELS[dayStatus(calendarSelected, today)]}`;
+  calendarDetails.append(title);
+
+  // The quests ticked that day (deleted quests have their ticks removed too)
+  const ticked = (completions[calendarSelected] || [])
+    .map((id) => habits.find((h) => h.id === id))
+    .filter((h) => h !== undefined);
+
+  if (ticked.length === 0) {
+    const none = document.createElement("p");
+    none.className = "placeholder";
+    none.textContent = "Nothing ticked";
+    calendarDetails.append(none);
+    return;
+  }
+  const list = document.createElement("ul");
+  list.className = "calendar-ticked";
+  for (const habit of ticked) {
+    const item = document.createElement("li");
+    item.textContent = habit.name; // textContent: user text shown as plain text
+    list.append(item);
+  }
+  calendarDetails.append(list);
+}
+
+function renderCalendar() {
+  calendarTitle.textContent = formatMonthTitle(calendarYear, calendarMonth);
+  buildMonthGrid(calendarGrid, calendarYear, calendarMonth, makeCalendarDay);
+  renderCalendarDetails();
+}
+
+// Move a month back (-1) or forward (+1). new Date() handles the year change:
+// e.g. month 12 of 2026 becomes January 2027.
+function changeCalendarMonth(step) {
+  const date = new Date(calendarYear, calendarMonth + step, 1);
+  calendarYear = date.getFullYear();
+  calendarMonth = date.getMonth();
+  renderCalendar();
+}
+
+function openCalendar() {
+  const today = parseDate(todayString());
+  calendarYear = today.getFullYear();
+  calendarMonth = today.getMonth();
+  calendarSelected = todayString(); // show today's details to start with
+  renderCalendar();
+  calendarModal.hidden = false;
+}
+
+function closeCalendar() {
+  calendarModal.hidden = true;
+}
+
+function isCalendarOpen() {
+  return !calendarModal.hidden;
+}
+
+document.getElementById("today-date").addEventListener("click", openCalendar);
+document.getElementById("calendar-close").addEventListener("click", closeCalendar);
+document.getElementById("calendar-prev").addEventListener("click", () => changeCalendarMonth(-1));
+document.getElementById("calendar-next").addEventListener("click", () => changeCalendarMonth(1));
+
+
 // ===== Screen switching =====
 // Screen 0 = Notes, screen 1 = Main (today), screen 2 = Quests (habits).
 
@@ -1610,6 +1790,10 @@ document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeNoteForm();
     return;
   }
+  if (isCalendarOpen()) {
+    if (event.key === "Escape") closeCalendar();
+    return;
+  }
   if (event.key === "ArrowRight") showScreen(currentScreen + 1);
   if (event.key === "ArrowLeft") showScreen(currentScreen - 1);
 });
@@ -1630,7 +1814,7 @@ track.addEventListener("touchstart", (event) => {
 
 track.addEventListener("touchend", (event) => {
   // no swiping while a popup is open
-  if (isFormOpen() || isImportOpen() || isNoteFormOpen()) return;
+  if (isFormOpen() || isImportOpen() || isNoteFormOpen() || isCalendarOpen()) return;
   if (touchStartedInField) return;
 
   const dx = event.changedTouches[0].clientX - touchStartX;

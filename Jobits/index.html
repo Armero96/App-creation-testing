@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- Makes the page fit the phone's width instead of a zoomed-out desktop view -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jobits</title>
+  <link rel="stylesheet" href="style.css">
+
+  <!-- PWA: tells the phone the app's name, colours and icon, for installing -->
+  <link rel="manifest" href="manifest.json">
+  <!-- Colour of the phone's status bar while the app is open -->
+  <meta name="theme-color" content="#1d2b53">
+  <!-- Icon for the browser tab and for iPhones -->
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+
+  <!-- The "viewport" is the window you look through; it shows one screen at a time. -->
+  <main class="viewport">
+    <!-- The "track" holds both screens side by side. We slide it left/right to switch. -->
+    <div class="track" id="track">
+
+      <!-- ===== Screen 1: Main (today) ===== -->
+      <section class="screen" id="screen-main" aria-label="Today">
+        <div class="ascension" id="ascension-label">Ascension: 0</div>
+
+        <!-- Placeholder for the adventurer: just shows the current sword -->
+        <div class="adventurer">
+          <p id="sword-name">Wooden sword</p>
+        </div>
+
+        <!-- Current level, and a message that pops up for a few seconds on level-up -->
+        <p class="level" id="level-label">Level 1</p>
+        <p class="level-up" id="level-up" aria-live="polite"></p>
+
+        <!-- Day progress bar: app.js sets the fill width and the label -->
+        <div class="progress">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <p class="progress-label" id="progress-label">No quests today</p>
+
+        <!-- One-off tasks from earlier days that aren't done yet.
+             Hidden when there are none. -->
+        <div id="carried-section" hidden>
+          <h2>Carried over</h2>
+          <ul class="task-list" id="carried-list"></ul>
+        </div>
+
+        <h2>Today's quests</h2>
+        <!-- app.js fills this with one slot per time of day
+             (morning, noon, afternoon, evening, and "any time" if needed) -->
+        <div id="today-slots"></div>
+      </section>
+
+      <!-- ===== Screen 2: Habits ===== -->
+      <section class="screen" id="screen-habits" aria-label="Quests">
+        <h1>Quests</h1>
+        <!-- Shown only when there are no habits saved -->
+        <p class="placeholder" id="habits-empty">No quests yet</p>
+        <!-- app.js fills this list with one <li> per saved habit -->
+        <ul class="habit-list" id="habit-list"></ul>
+
+        <!-- For testing: wipes all quests, ticks, level and ascension (two taps) -->
+        <button class="reset-button" id="reset-button" type="button">Reset everything</button>
+        <!-- Opens the "new habit" form -->
+        <button class="add-button" id="add-button" type="button" aria-label="Add quest">+</button>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Screen indicator: one dot per screen, each with a small pixel icon.
+       Icons are drawn as tiny SVG squares ("pixels") on an 8x8 grid. -->
+  <nav class="indicator" aria-hidden="true">
+    <span class="dot" data-screen="0" title="Today">
+      <!-- Sword: blade going up-right, crossguard, handle, pommel -->
+      <svg viewBox="0 0 8 8" shape-rendering="crispEdges">
+        <rect x="7" y="0" width="1" height="1"/>
+        <rect x="6" y="1" width="1" height="1"/>
+        <rect x="5" y="2" width="1" height="1"/>
+        <rect x="4" y="3" width="1" height="1"/>
+        <rect x="2" y="3" width="1" height="1"/>
+        <rect x="3" y="4" width="1" height="1"/>
+        <rect x="4" y="5" width="1" height="1"/>
+        <rect x="2" y="5" width="1" height="1"/>
+        <rect x="1" y="6" width="1" height="1"/>
+        <rect x="0" y="7" width="1" height="1"/>
+      </svg>
+    </span>
+    <span class="dot" data-screen="1" title="Quests">
+      <!-- List: three bullet points with lines -->
+      <svg viewBox="0 0 8 8" shape-rendering="crispEdges">
+        <rect x="0" y="1" width="1" height="1"/><rect x="2" y="1" width="6" height="1"/>
+        <rect x="0" y="4" width="1" height="1"/><rect x="2" y="4" width="6" height="1"/>
+        <rect x="0" y="7" width="1" height="1"/><rect x="2" y="7" width="6" height="1"/>
+      </svg>
+    </span>
+  </nav>
+
+  <!-- ===== "New habit" popup =====
+       It lives outside the sliding track so it always covers the whole window.
+       The "hidden" attribute keeps it invisible until app.js removes it. -->
+  <div class="modal" id="habit-modal" hidden>
+    <form class="habit-form" id="habit-form" novalidate>
+      <!-- app.js changes this to "Edit quest" when editing -->
+      <h2 id="form-title">New quest</h2>
+
+      <label for="habit-name">Name</label>
+      <input type="text" id="habit-name" maxlength="40" autocomplete="off">
+
+      <label for="habit-exp">Exp</label>
+      <!-- inputmode="numeric" shows a number keypad on phones -->
+      <input type="number" id="habit-exp" min="1" step="1" inputmode="numeric">
+
+      <label for="habit-date">Date</label>
+      <input type="date" id="habit-date">
+
+      <label for="habit-timing">Time of day</label>
+      <select id="habit-timing">
+        <option value="anytime">Any time</option>
+        <option value="morning">Morning</option>
+        <option value="noon">Noon</option>
+        <option value="afternoon">Afternoon</option>
+        <option value="evening">Evening</option>
+      </select>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="habit-repeating">
+        Repeating
+      </label>
+
+      <!-- Only shown when "Repeating" is ticked -->
+      <div id="repeat-options" hidden>
+        <label for="habit-repeat">Repeat</label>
+        <select id="habit-repeat">
+          <option value="daily">Every day</option>
+          <option value="workdays">Every work day</option>
+          <option value="every2days">Every second day</option>
+          <option value="weekly">Every week</option>
+          <option value="monthly">Every month</option>
+        </select>
+      </div>
+
+      <!-- Validation messages appear here -->
+      <p class="form-error" id="form-error"></p>
+
+      <div class="form-buttons">
+        <button type="button" class="button-secondary" id="cancel-button">Cancel</button>
+        <button type="submit" class="button-primary">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

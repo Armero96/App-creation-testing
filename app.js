@@ -752,3 +752,11 @@ document.addEventListener("visibilitychange", () => {
 // ===== Start-up =====
 showScreen(0);      // start on the Main screen
 renderAll();        // draw both screens from the saved data
+
+// Register the service worker (sw.js), which makes the app work offline
+// and installable. Older browsers without support simply skip this.
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch((error) => {
+    console.warn("Service worker registration failed:", error);
+  });
+}

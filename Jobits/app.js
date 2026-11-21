@@ -38,7 +38,10 @@ function saveCompletedDays() {
 
 // The list of all habits, kept in memory while the app is open.
 // Each habit looks like:
-// { id, name, exp, date: "YYYY-MM-DD", repeat: null | "daily" | ..., timing: "morning" | ... }
+// { id, name, exp, date: "YYYY-MM-DD", repeat: null | "daily" | ..., timing: "morning" | ...,
+//   category: null | "strength" | ..., standing: true | false }
+// Standing quests have exp 0, repeat null, and date = their deadline, or null if none.
+// (Quests made before a field existed simply don't have it, which counts as null/false.)
 let habits = loadFromStorage(STORAGE_KEY, []);
 
 // The log of ticked tasks: for each day, the ids of the tasks done that day.
@@ -293,12 +296,25 @@ function toggleDone(habit) {
 function getTodayTasks(today) {
   // Carried over: one-off tasks from earlier days, not done on an earlier day.
   // (If ticked today, they stay visible, ticked, for the rest of today.)
+  // Standing quests are left out here: they have their own rules (below).
   const carried = habits.filter(
-    (h) => h.repeat === null && h.date < today && !isDoneOnOtherDay(h.id, today)
+    (h) => !h.standing && h.repeat === null && h.date < today && !isDoneOnOtherDay(h.id, today)
   );
   // Due today: everything whose date/repeat rule matches today
-  const dueToday = habits.filter((h) => isDueOn(h, today));
+  const dueToday = habits.filter((h) => !h.standing && isDueOn(h, today));
   return { carried, dueToday };
+}
+
+// Standing quests to show on the Main screen: all not finished on an earlier
+// day. (Ones ticked today stay visible, ticked, for the rest of today.)
+function getStandingQuests(today) {
+  return habits.filter((h) => h.standing && !isDoneOnOtherDay(h.id, today));
+}
+
+// Standing quests whose deadline is today (and weren't finished earlier).
+// These count as one of today's tasks: the day isn't complete until they're ticked.
+function getStandingDueToday(today) {
+  return getStandingQuests(today).filter((h) => h.date === today);
 }
 
 // Total exp of today's tasks, and how much of it has been earned
@@ -311,10 +327,14 @@ function getTodayExp(today) {
 }
 
 // A day is complete when it has tasks and all of them are ticked.
-// (A day with no tasks counts as missed.)
+// "Tasks" are the exp quests plus any standing quest whose deadline is today.
+// (A day with no tasks at all counts as missed.)
 function isTodayComplete(today) {
   const { total, earned } = getTodayExp(today);
-  return total > 0 && earned === total;
+  const standingDue = getStandingDueToday(today);
+  const hasTasks = total > 0 || standingDue.length > 0;
+  const standingDone = standingDue.every((h) => isDoneOnDay(h.id, today));
+  return hasTasks && earned === total && standingDone;
 }
 
 // Keep today's entry in the completed-days record up to date.
@@ -420,6 +440,9 @@ function renderLevel() {
 const carriedSection = document.getElementById("carried-section");
 const carriedList = document.getElementById("carried-list");
 const todaySlots = document.getElementById("today-slots");
+const standingSection = document.getElementById("standing-section");
+const standingList = document.getElementById("standing-list");
+const standingDueNote = document.getElementById("standing-due-note");
 
 // Crossed swords, drawn on an 8x8 pixel grid, shown in the box of a ticked task.
 // Each sword: blade (white) from a top corner to the middle, then guard, handle
@@ -449,6 +472,20 @@ function sortByTiming(tasks) {
   return tasks.sort((a, b) => TIMING_ORDER.indexOf(a.timing) - TIMING_ORDER.indexOf(b.timing));
 }
 
+// Standing quests: soonest deadline first, "no deadline" last
+function sortByDeadline(tasks) {
+  const key = (h) => h.date || "9999-99-99"; // no deadline sorts after any date
+  return tasks.sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
+}
+
+// The small text under a standing quest's name on the Main screen
+function standingDetailsText(habit, today) {
+  if (!habit.date) return "no deadline";
+  if (habit.date === today) return "due today";
+  if (habit.date < today) return formatDate(habit.date); // shown after "Overdue"
+  return `by ${formatDate(habit.date)}`;
+}
+
 // Build one tappable task row.
 // showTiming: whether to print the time of day (not needed inside a slot,
 // since the slot's label already says it).
@@ -474,9 +511,20 @@ function makeTaskRow(habit, today, showTiming) {
 
   const details = document.createElement("span");
   details.className = "task-details";
-  details.textContent = showTiming
-    ? `${habit.exp} exp · ${TIMING_LABELS[habit.timing]}`
-    : `${habit.exp} exp`;
+  if (habit.standing) {
+    details.textContent = standingDetailsText(habit, today);
+    // Past its deadline and not done: a pink "Overdue" label in front
+    if (habit.date && habit.date < today && !done) {
+      const overdue = document.createElement("span");
+      overdue.className = "overdue";
+      overdue.textContent = "Overdue";
+      details.prepend(overdue);
+    }
+  } else {
+    details.textContent = showTiming
+      ? `${habit.exp} exp · ${TIMING_LABELS[habit.timing]}`
+      : `${habit.exp} exp`;
+  }
   const chip = makeCategoryChip(habit.category);
   if (chip) details.prepend(chip);   // category label goes first on the line
 
@@ -520,6 +568,18 @@ function renderMainScreen() {
     todaySlots.append(slot);
   }
 
+  // Standing quests: their own list at the bottom, soonest deadline first
+  const standing = getStandingQuests(today);
+  standingList.innerHTML = "";
+  for (const habit of sortByDeadline(standing)) standingList.append(makeTaskRow(habit, today, false));
+  standingSection.hidden = standing.length === 0;
+
+  // Under the bar: a reminder if a standing quest is due today and not ticked
+  const standingDueLeft = getStandingDueToday(today).filter((h) => !isDoneOnDay(h.id, today));
+  const n = standingDueLeft.length;
+  standingDueNote.hidden = n === 0;
+  standingDueNote.textContent = `${n} standing quest${n === 1 ? "" : "s"} due today`;
+
   // Progress bar: exp of ticked tasks out of the exp of all of today's tasks
   const { total, earned } = getTodayExp(today);
 
@@ -553,7 +613,7 @@ const habitsNoMatch = document.getElementById("habits-no-match");
 // The filters as they are when nothing has been chosen yet
 const DEFAULT_FILTERS = {
   category: "all",      // "all" | "strength" | "mind" | "constitution" | "none"
-  type: "all",          // "all" | "oneoff" | "repeating"
+  type: "all",          // "all" | "oneoff" | "repeating" | "standing"
   showCompleted: false, // show one-off quests that are already done?
 };
 
@@ -572,11 +632,12 @@ function matchesFilters(habit, today) {
   if (filters.category !== "all" && filters.category !== "none"
       && habit.category !== filters.category) return false;
 
-  // Type: one-off tasks have repeat === null
-  if (filters.type === "oneoff" && habit.repeat) return false;
+  // Type: one-off tasks have repeat === null and aren't standing quests
+  if (filters.type === "oneoff" && (habit.repeat || habit.standing)) return false;
   if (filters.type === "repeating" && !habit.repeat) return false;
+  if (filters.type === "standing" && !habit.standing) return false;
 
-  // Done one-off quests are hidden unless "Show completed" is ticked.
+  // Done one-off (and standing) quests are hidden unless "Show completed" is ticked.
   // (Repeating habits are never "finished", so they always pass this check.)
   if (!filters.showCompleted && !habit.repeat && isDone(habit, today)) return false;
 
@@ -636,11 +697,18 @@ function renderHabitList() {
     name.textContent = habit.name;
 
     // Repeating habits show their repeat type; one-off tasks show their date
-    const when = habit.repeat ? REPEAT_LABELS[habit.repeat] : formatDate(habit.date);
-
     const details = document.createElement("p");
     details.className = "habit-details";
-    details.textContent = `${habit.exp} exp · ${when} · ${TIMING_LABELS[habit.timing]}`;
+    if (habit.standing) {
+      // Standing quests have no exp or time of day, just an optional deadline
+      details.textContent = habit.date
+        ? `Standing · by ${formatDate(habit.date)}`
+        : "Standing · no deadline";
+    } else {
+      // Repeating habits show their repeat type; one-off tasks show their date
+      const when = habit.repeat ? REPEAT_LABELS[habit.repeat] : formatDate(habit.date);
+      details.textContent = `${habit.exp} exp · ${when} · ${TIMING_LABELS[habit.timing]}`;
+    }
     const chip = makeCategoryChip(habit.category);
     if (chip) details.prepend(chip);
 
@@ -814,7 +882,8 @@ function isValidBackup(backup) {
     typeof habit.id === "string" &&
     typeof habit.name === "string" &&
     typeof habit.exp === "number" &&
-    typeof habit.date === "string"
+    // a date, except standing quests, which may have no deadline (null)
+    (typeof habit.date === "string" || (habit.standing === true && habit.date === null))
   );
   // Every day of ticks must be a list of quest ids
   const ticksOk = Object.values(backup.completions).every(
@@ -897,6 +966,12 @@ const nameInput = document.getElementById("habit-name");
 const expInput = document.getElementById("habit-exp");
 const dateInput = document.getElementById("habit-date");
 const timingSelect = document.getElementById("habit-timing");
+const standingCheckbox = document.getElementById("habit-standing");
+const expField = document.getElementById("exp-field");
+const dateLabel = document.getElementById("date-label");
+const noDeadlineButton = document.getElementById("no-deadline");
+const timingField = document.getElementById("timing-field");
+const repeatField = document.getElementById("repeat-field");
 const repeatingCheckbox = document.getElementById("habit-repeating");
 const repeatOptions = document.getElementById("repeat-options");
 const repeatSelect = document.getElementById("habit-repeat");
@@ -943,8 +1018,9 @@ function openForm(habit = null) {
     editingId = habit.id;
     formTitle.textContent = "Edit quest";
     nameInput.value = habit.name;
-    expInput.value = habit.exp;
-    dateInput.value = habit.date;
+    standingCheckbox.checked = habit.standing === true;
+    expInput.value = habit.standing ? "" : habit.exp;
+    dateInput.value = habit.date || "";  // standing quests may have no deadline
     timingSelect.value = habit.timing;
     repeatingCheckbox.checked = habit.repeat !== null;
     if (habit.repeat) repeatSelect.value = habit.repeat;
@@ -956,8 +1032,7 @@ function openForm(habit = null) {
     selectCategory(null);
   }
 
-  // Show the repeat options only if "Repeating" is ticked
-  repeatOptions.hidden = !repeatingCheckbox.checked;
+  updateFormFields(); // show only the fields that fit this kind of quest
   modal.hidden = false;
   // For a new quest, put the cursor in the name field (you always type one).
   // When editing, don't: on a phone that would pop up the keyboard and cover
@@ -974,8 +1049,33 @@ document.getElementById("add-button").addEventListener("click", () => openForm()
 document.getElementById("cancel-button").addEventListener("click", closeForm);
 
 // Show or hide the repeat options when "Repeating" is ticked/unticked
-repeatingCheckbox.addEventListener("change", () => {
+repeatingCheckbox.addEventListener("change", updateFormFields);
+
+// Show or hide form fields depending on the kind of quest
+function updateFormFields() {
+  const standing = standingCheckbox.checked;
+  // Standing quests have no exp, time of day or repeat
+  expField.hidden = standing;
+  timingField.hidden = standing;
+  repeatField.hidden = standing;
+  // ...and their date is an optional deadline
+  dateLabel.textContent = standing ? "Deadline (optional)" : "Date";
+  noDeadlineButton.hidden = !standing;
+  // Repeat options only if "Repeating" is ticked
   repeatOptions.hidden = !repeatingCheckbox.checked;
+}
+
+standingCheckbox.addEventListener("change", () => {
+  if (standingCheckbox.checked && editingId === null) {
+    dateInput.value = "";                  // new standing quest: no deadline to start with
+  } else if (!standingCheckbox.checked && dateInput.value === "") {
+    dateInput.value = todayString();       // normal quests need a date: default today
+  }
+  updateFormFields();
+});
+
+noDeadlineButton.addEventListener("click", () => {
+  dateInput.value = "";
 });
 
 // "Save" pressed (or Enter in a field)
@@ -991,6 +1091,21 @@ form.addEventListener("submit", (event) => {
     formError.textContent = "Please enter a name.";
     return;
   }
+
+  // Standing quest: only the name is required
+  if (standingCheckbox.checked) {
+    saveQuest({
+      name: name,
+      exp: 0,               // standing quests give no exp
+      date: date || null,   // the deadline, or null for "no deadline"
+      repeat: null,
+      timing: "anytime",
+      category: selectedCategory,
+      standing: true,
+    });
+    return;
+  }
+
   if (!Number.isInteger(exp) || exp < 1) {
     formError.textContent = "Exp must be a whole number of 1 or more.";
     return;
@@ -1008,8 +1123,13 @@ form.addEventListener("submit", (event) => {
     repeat: repeatingCheckbox.checked ? repeatSelect.value : null, // null = one-off task
     timing: timingSelect.value,
     category: selectedCategory, // null = no category
+    standing: false,
   };
+  saveQuest(fields);
+});
 
+// Add a new quest, or overwrite the one being edited, then save and redraw
+function saveQuest(fields) {
   if (editingId === null) {
     // New habit: give it a fresh id and add it to the end of the list
     habits.push({ id: makeId(), ...fields });
@@ -1022,7 +1142,7 @@ form.addEventListener("submit", (event) => {
   saveHabits();
   renderAll();   // today's goal changes right away
   closeForm();
-});
+}
 
 
 // ===== Screen switching =====

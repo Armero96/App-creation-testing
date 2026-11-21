@@ -44,6 +44,8 @@
           <div class="progress-fill" id="progress-fill"></div>
         </div>
         <p class="progress-label" id="progress-label">No quests today</p>
+        <!-- Shown when a standing quest's deadline is today and it isn't ticked -->
+        <p class="standing-due-note" id="standing-due-note" hidden></p>
 
         <!-- One-off tasks from earlier days that aren't done yet.
              Hidden when there are none. -->
@@ -56,6 +58,12 @@
         <!-- app.js fills this with one slot per time of day
              (morning, noon, afternoon, evening, and "any time" if needed) -->
         <div id="today-slots"></div>
+
+        <!-- Standing quests: "at some point" to-dos, no exp. Hidden when there are none. -->
+        <div id="standing-section" hidden>
+          <h2>Standing quests</h2>
+          <ul class="task-list" id="standing-list"></ul>
+        </div>
       </section>
 
       <!-- ===== Screen 2: Habits ===== -->
@@ -78,6 +86,7 @@
             <button type="button" class="filter-option" data-group="type" data-value="all">All</button>
             <button type="button" class="filter-option" data-group="type" data-value="oneoff">One-off</button>
             <button type="button" class="filter-option" data-group="type" data-value="repeating">Repeating</button>
+            <button type="button" class="filter-option" data-group="type" data-value="standing">Standing</button>
           </div>
           <label class="checkbox-row filter-checkbox">
             <input type="checkbox" id="show-completed">
@@ -150,21 +159,34 @@
       <label for="habit-name">Name</label>
       <input type="text" id="habit-name" maxlength="40" autocomplete="off">
 
-      <label for="habit-exp">Exp</label>
-      <!-- inputmode="numeric" shows a number keypad on phones -->
-      <input type="number" id="habit-exp" min="1" step="1" inputmode="numeric">
+      <!-- Standing quest: no exp, no time of day, no repeat, optional deadline.
+           Ticking it hides the fields that don't apply (see app.js). -->
+      <label class="checkbox-row">
+        <input type="checkbox" id="habit-standing">
+        Standing quest
+      </label>
 
-      <label for="habit-date">Date</label>
+      <div id="exp-field">
+        <label for="habit-exp">Exp</label>
+        <!-- inputmode="numeric" shows a number keypad on phones -->
+        <input type="number" id="habit-exp" min="1" step="1" inputmode="numeric">
+      </div>
+
+      <!-- app.js changes this label to "Deadline (optional)" for standing quests -->
+      <label for="habit-date" id="date-label">Date</label>
       <input type="date" id="habit-date">
+      <button type="button" class="small-button" id="no-deadline" hidden>No deadline</button>
 
-      <label for="habit-timing">Time of day</label>
-      <select id="habit-timing">
-        <option value="anytime">Any time</option>
-        <option value="morning">Morning</option>
-        <option value="noon">Noon</option>
-        <option value="afternoon">Afternoon</option>
-        <option value="evening">Evening</option>
-      </select>
+      <div id="timing-field">
+        <label for="habit-timing">Time of day</label>
+        <select id="habit-timing">
+          <option value="anytime">Any time</option>
+          <option value="morning">Morning</option>
+          <option value="noon">Noon</option>
+          <option value="afternoon">Afternoon</option>
+          <option value="evening">Evening</option>
+        </select>
+      </div>
 
       <!-- Category: tap a sticker to choose it, tap it again to clear it.
            app.js draws the pixel icons into the empty <span>s. -->
@@ -181,21 +203,23 @@
         </button>
       </div>
 
-      <label class="checkbox-row">
-        <input type="checkbox" id="habit-repeating">
-        Repeating
-      </label>
+      <div id="repeat-field">
+        <label class="checkbox-row">
+          <input type="checkbox" id="habit-repeating">
+          Repeating
+        </label>
 
-      <!-- Only shown when "Repeating" is ticked -->
-      <div id="repeat-options" hidden>
-        <label for="habit-repeat">Repeat</label>
-        <select id="habit-repeat">
-          <option value="daily">Every day</option>
-          <option value="workdays">Every work day</option>
-          <option value="every2days">Every second day</option>
-          <option value="weekly">Every week</option>
-          <option value="monthly">Every month</option>
-        </select>
+        <!-- Only shown when "Repeating" is ticked -->
+        <div id="repeat-options" hidden>
+          <label for="habit-repeat">Repeat</label>
+          <select id="habit-repeat">
+            <option value="daily">Every day</option>
+            <option value="workdays">Every work day</option>
+            <option value="every2days">Every second day</option>
+            <option value="weekly">Every week</option>
+            <option value="monthly">Every month</option>
+          </select>
+        </div>
       </div>
 
       <!-- Validation messages appear here -->

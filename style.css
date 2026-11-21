@@ -289,7 +289,21 @@ h1, h2 {
   cursor: pointer;
 }
 
-/* Delete button after the first tap: "Sure?" in pink */
+/* "Reset everything": full width, pink outline to signal danger */
+.reset-button {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 32px;
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--pink);
+  background: var(--bg);
+  border: 4px solid var(--pink);
+  cursor: pointer;
+}
+
+/* Delete / Reset buttons after the first tap: filled pink */
+.reset-button.confirming,
 .habit-actions button.confirming {
   color: var(--bg);
   background: var(--pink);

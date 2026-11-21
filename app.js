@@ -489,7 +489,9 @@ function renderHabitList() {
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.textContent = "Delete";
-    deleteButton.addEventListener("click", () => handleDeleteClick(deleteButton, habit.id));
+    deleteButton.addEventListener("click", () =>
+      confirmTwice(deleteButton, "Delete", "Sure?", () => deleteHabit(habit.id))
+    );
 
     actions.append(editButton, deleteButton);
     item.append(name, details, actions);
@@ -497,28 +499,59 @@ function renderHabitList() {
   }
 }
 
-// Delete needs two taps: the first asks "Sure?", the second deletes.
-// If there's no second tap within 3 seconds, the button goes back to normal.
-const DELETE_CONFIRM_TIME = 3000; // milliseconds
+// Two-tap safety check, used by Delete and Reset everything.
+// The first tap changes the button to askText (in pink); a second tap within
+// 3 seconds runs onConfirm. Otherwise the button goes back to normalText.
+const CONFIRM_TIME = 3000; // milliseconds
 
-function handleDeleteClick(button, habitId) {
+function confirmTwice(button, normalText, askText, onConfirm) {
   if (button.classList.contains("confirming")) {
-    // Second tap: keep every habit except this one
-    habits = habits.filter((habit) => habit.id !== habitId);
-    removeFromLog(habitId);   // forget its ticks too
-    saveHabits();
-    saveCompletions();
-    renderAll();              // today's goal changes right away
+    // Second tap: do it
+    button.classList.remove("confirming");
+    button.textContent = normalText;
+    onConfirm();
     return;
   }
 
   // First tap: ask for confirmation
   button.classList.add("confirming");
-  button.textContent = "Sure?";
+  button.textContent = askText;
   setTimeout(() => {
     button.classList.remove("confirming");
-    button.textContent = "Delete";
-  }, DELETE_CONFIRM_TIME);
+    button.textContent = normalText;
+  }, CONFIRM_TIME);
+}
+
+function deleteHabit(habitId) {
+  habits = habits.filter((habit) => habit.id !== habitId); // keep all others
+  removeFromLog(habitId);   // forget its ticks too
+  saveHabits();
+  saveCompletions();
+  renderAll();              // today's goal changes right away
+}
+
+
+// ===== Reset everything (for testing) =====
+
+const resetButton = document.getElementById("reset-button");
+
+resetButton.addEventListener("click", () =>
+  confirmTwice(resetButton, "Reset everything", "Sure? Tap again", resetEverything)
+);
+
+function resetEverything() {
+  // Wipe the saved data...
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(COMPLETIONS_KEY);
+  localStorage.removeItem(COMPLETED_DAYS_KEY);
+  // ...and the copies in memory
+  habits = [];
+  completions = {};
+  completedDays = {};
+  // Forget the last shown level, so no message pops up after the reset
+  shownLevel = null;
+  shownAscension = null;
+  renderAll();
 }
 
 
@@ -689,6 +722,30 @@ track.addEventListener("touchend", (event) => {
   // Finger moved right (dx positive) -> go back (Main).
   if (dx < 0) showScreen(currentScreen + 1);
   else showScreen(currentScreen - 1);
+});
+
+
+// ===== A new day while the app is open =====
+// Everything (level, carry-over, missed days, Monday reset) is worked out from
+// the saved records and today's date, so when the date changes we only need to
+// redraw. We check every 30 seconds, and also whenever the app comes back into
+// view (phones pause timers while an app is in the background).
+
+let shownDay = todayString();
+
+function checkForNewDay() {
+  const today = todayString();
+  if (today === shownDay) return;
+  shownDay = today;
+  // A new day: don't treat the level change as a level-up message
+  shownLevel = null;
+  shownAscension = null;
+  renderAll();
+}
+
+setInterval(checkForNewDay, 30 * 1000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) checkForNewDay();
 });
 
 

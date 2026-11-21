@@ -88,6 +88,16 @@
         <!-- app.js fills this list with one <li> per saved habit -->
         <ul class="habit-list" id="habit-list"></ul>
 
+        <!-- Backup: Export saves all data to a file; Import loads one back -->
+        <div class="backup-buttons">
+          <button type="button" id="export-button">Export</button>
+          <button type="button" id="import-button">Import</button>
+        </div>
+        <!-- The real file picker is hidden; the Import button "clicks" it -->
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+        <!-- Short messages about export/import (e.g. "Backup loaded") -->
+        <p class="backup-message" id="backup-message"></p>
+
         <!-- For testing: wipes all quests, ticks, level and ascension (two taps) -->
         <button class="reset-button" id="reset-button" type="button">Reset everything</button>
         <!-- Opens the "new habit" form -->
@@ -192,6 +202,25 @@
         <button type="submit" class="button-primary">Save</button>
       </div>
     </form>
+  </div>
+
+  <!-- ===== "Import backup" popup =====
+       Shown after a backup file is picked: replace or merge? -->
+  <div class="modal" id="import-modal" hidden>
+    <div class="habit-form import-dialog" role="dialog" aria-labelledby="import-title">
+      <h2 id="import-title">Import backup</h2>
+      <!-- app.js fills in what the file contains -->
+      <p id="import-summary"></p>
+      <p class="import-help">
+        <b>Replace:</b> delete what's on this phone and load the backup.<br>
+        <b>Merge:</b> add the backup to what's on this phone.
+      </p>
+      <div class="import-buttons">
+        <button type="button" class="button-danger" id="import-replace">Replace</button>
+        <button type="button" class="button-primary" id="import-merge">Merge</button>
+        <button type="button" class="button-secondary" id="import-cancel">Cancel</button>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

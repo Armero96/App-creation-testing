@@ -80,7 +80,11 @@ For now, categories are only for organizing and filtering; they don't change the
 
 All data lives only in the phone's browser, so clearing site data or resetting the phone would erase it.
 - **Export** saves all data (quests, ticks, completed days, and therefore level and ascension) as a small file.
-- **Import** loads such a file back, e.g. on a new phone or after a reset.
+- **Import** loads such a file back, e.g. on a new phone or after a reset. Files that aren't Jobits backups are refused, without changing anything. After picking a file, a popup says what it contains and asks:
+  - **Replace** (two taps, like Delete): wipe this phone's data and load the backup.
+  - **Merge:** add the backup to this phone's data. Quests missing from the phone are added; if a quest is in both, **the phone's version is kept**. A quest counts as ticked on a day, and a day as completed, if it was in either copy.
+  - **Cancel:** do nothing.
+- Filter choices are a display setting and aren't part of the backup.
 
 ---
 
@@ -132,7 +136,7 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
 
 ## Open questions (ask me before building these parts)
 
-- **Import:** should importing a backup **replace** all current data, or **merge** it with what's already there? (Ask before building the backup step.)
+- None right now. Add new ones here as they come up.
 
 ---
 

@@ -712,6 +712,168 @@ function resetEverything() {
 }
 
 
+// ===== Backup: export and import =====
+// A backup is a small JSON text file with everything the game needs:
+// quests, ticks and completed days (level and ascension come from those).
+// Filters are a display setting, so they aren't included.
+
+const BACKUP_VERSION = 1; // bump if the file layout ever changes
+
+const exportButton = document.getElementById("export-button");
+const importButton = document.getElementById("import-button");
+const importFile = document.getElementById("import-file");
+const backupMessage = document.getElementById("backup-message");
+const importModal = document.getElementById("import-modal");
+const importSummary = document.getElementById("import-summary");
+const importReplaceButton = document.getElementById("import-replace");
+const importMergeButton = document.getElementById("import-merge");
+const importCancelButton = document.getElementById("import-cancel");
+
+// The backup that was read from the file, waiting for Replace or Merge
+let pendingBackup = null;
+
+function showBackupMessage(text) {
+  backupMessage.textContent = text;
+}
+
+// ----- Export -----
+// Build the file in memory, then "click" a temporary download link for it.
+exportButton.addEventListener("click", () => {
+  const backup = {
+    app: "jobits",              // so Import can recognise its own files
+    version: BACKUP_VERSION,
+    exported: new Date().toISOString(),
+    habits: habits,
+    completions: completions,
+    completedDays: completedDays,
+  };
+  const text = JSON.stringify(backup, null, 2); // indented, readable by humans
+  const file = new Blob([text], { type: "application/json" });
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(file);
+  link.download = `jobits-backup-${todayString()}.json`;
+  link.click();
+  URL.revokeObjectURL(link.href); // free the memory again
+
+  showBackupMessage(`Saved ${link.download}`);
+});
+
+// ----- Import, part 1: pick and check a file -----
+// The Import button opens the hidden file picker
+importButton.addEventListener("click", () => importFile.click());
+
+importFile.addEventListener("change", async () => {
+  const file = importFile.files[0];
+  importFile.value = ""; // so picking the same file again still works
+  if (!file) return;     // the picker was closed without choosing
+
+  let backup;
+  try {
+    backup = JSON.parse(await file.text());
+  } catch {
+    showBackupMessage("That file isn't a Jobits backup.");
+    return;
+  }
+  if (!isValidBackup(backup)) {
+    showBackupMessage("That file isn't a Jobits backup.");
+    return;
+  }
+
+  pendingBackup = backup;
+  const questCount = backup.habits.length;
+  const dayCount = Object.keys(backup.completions).length;
+  importSummary.textContent =
+    `This backup has ${questCount} quest${questCount === 1 ? "" : "s"} ` +
+    `and ${dayCount} day${dayCount === 1 ? "" : "s"} of ticks.`;
+  showBackupMessage("");
+  importModal.hidden = false;
+});
+
+// Check the file really is a Jobits backup with the expected pieces,
+// so a wrong or damaged file can't break the app's data.
+function isValidBackup(backup) {
+  const isObject = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
+  if (!isObject(backup) || backup.app !== "jobits") return false;
+  if (!Array.isArray(backup.habits)) return false;
+  if (!isObject(backup.completions) || !isObject(backup.completedDays)) return false;
+
+  // Every quest needs at least an id, a name, an exp value and a date
+  const questsOk = backup.habits.every((habit) =>
+    isObject(habit) &&
+    typeof habit.id === "string" &&
+    typeof habit.name === "string" &&
+    typeof habit.exp === "number" &&
+    typeof habit.date === "string"
+  );
+  // Every day of ticks must be a list of quest ids
+  const ticksOk = Object.values(backup.completions).every(
+    (ids) => Array.isArray(ids) && ids.every((id) => typeof id === "string")
+  );
+  return questsOk && ticksOk;
+}
+
+// ----- Import, part 2: replace or merge -----
+
+function closeImport() {
+  importModal.hidden = true;
+  pendingBackup = null;
+}
+
+function isImportOpen() {
+  return !importModal.hidden;
+}
+
+// Save everything, forget the last shown level (so no "Level-up!" pops up
+// just because the data changed), redraw, and say what happened.
+function finishImport(message) {
+  saveHabits();
+  saveCompletions();
+  saveCompletedDays();
+  shownLevel = null;
+  shownAscension = null;
+  closeImport();
+  renderAll();
+  showBackupMessage(message);
+}
+
+// Replace: throw away this phone's data and use the backup's (two taps)
+importReplaceButton.addEventListener("click", () =>
+  confirmTwice(importReplaceButton, "Replace", "Sure?", () => {
+    habits = pendingBackup.habits;
+    completions = pendingBackup.completions;
+    completedDays = pendingBackup.completedDays;
+    finishImport("Backup loaded (replaced).");
+  })
+);
+
+// Merge: combine the backup with this phone's data
+importMergeButton.addEventListener("click", () => {
+  const backup = pendingBackup;
+
+  // Quests: add the ones this phone doesn't have yet. If a quest is in both,
+  // keep this phone's version (it's probably the newer one).
+  const knownIds = new Set(habits.map((habit) => habit.id));
+  const newQuests = backup.habits.filter((habit) => !knownIds.has(habit.id));
+  habits = habits.concat(newQuests);
+
+  // Ticks: a quest counts as ticked on a day if it was ticked in either copy
+  for (const [day, ids] of Object.entries(backup.completions)) {
+    const merged = new Set([...(completions[day] || []), ...ids]);
+    completions[day] = [...merged];
+  }
+
+  // Completed days: a day counts as completed if it was in either copy
+  for (const [day, done] of Object.entries(backup.completedDays)) {
+    if (done) completedDays[day] = true;
+  }
+
+  finishImport(`Backup merged (${newQuests.length} new quest${newQuests.length === 1 ? "" : "s"}).`);
+});
+
+importCancelButton.addEventListener("click", closeImport);
+
+
 // ===== "New habit" / "Edit habit" form =====
 // The same form is used for both. editingId tells us which mode we're in:
 // null = adding a new habit, otherwise = the id of the habit being edited.
@@ -881,6 +1043,10 @@ document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeForm();
     return;
   }
+  if (isImportOpen()) {
+    if (event.key === "Escape") closeImport();
+    return;
+  }
   if (event.key === "ArrowRight") showScreen(currentScreen + 1);
   if (event.key === "ArrowLeft") showScreen(currentScreen - 1);
 });
@@ -897,7 +1063,7 @@ track.addEventListener("touchstart", (event) => {
 });
 
 track.addEventListener("touchend", (event) => {
-  if (isFormOpen()) return; // no swiping while the form is open
+  if (isFormOpen() || isImportOpen()) return; // no swiping while a popup is open
 
   const dx = event.changedTouches[0].clientX - touchStartX;
   const dy = event.changedTouches[0].clientY - touchStartY;

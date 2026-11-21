@@ -261,8 +261,20 @@
       <p class="form-label" id="note-icon-label">Icon (optional)</p>
       <div class="icon-picker" id="icon-picker" role="group" aria-labelledby="note-icon-label"></div>
 
-      <label for="note-text">Text</label>
-      <textarea id="note-text" rows="8"></textarea>
+      <!-- Kind of note: only chosen when creating it (hidden when editing) -->
+      <div id="note-kind-field">
+        <p class="form-label" id="note-kind-label">Kind</p>
+        <div class="kind-picker" role="group" aria-labelledby="note-kind-label">
+          <button type="button" class="kind-option" data-kind="text">Free text</button>
+          <button type="button" class="kind-option" data-kind="checklist">Checklist</button>
+        </div>
+      </div>
+
+      <!-- Free-text notes only: checklist items are added on the note's card -->
+      <div id="note-text-field">
+        <label for="note-text">Text</label>
+        <textarea id="note-text" rows="8"></textarea>
+      </div>
 
       <p class="form-error" id="note-form-error"></p>
 

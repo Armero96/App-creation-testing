@@ -59,7 +59,8 @@ let completions = loadFromStorage(COMPLETIONS_KEY, {});
 let completedDays = loadFromStorage(COMPLETED_DAYS_KEY, {});
 
 // The notes on the Notes screen. Each looks like:
-// { id, title, icon: null | "cart" | ..., kind: "text", text }
+// { id, title, icon: null | "cart" | ..., kind: "text" | "checklist", text, items }
+// Free-text notes use "text"; checklists use "items": [{ id, text, done }].
 let notes = loadFromStorage(NOTES_KEY, []);
 
 
@@ -1278,39 +1279,152 @@ document.getElementById("notes-dot").innerHTML = pixelIcon([
 const noteList = document.getElementById("note-list");
 const notesEmpty = document.getElementById("notes-empty");
 
-// One card per note: icon and title on top, then the start of the text.
-// Tapping a card opens it in the note form.
+// A check mark for ticked checklist items
+const CHECK_SVG = pixelIcon([
+  "........",
+  ".......X",
+  "......XX",
+  "X....XX.",
+  "XX..XX..",
+  ".XXXX...",
+  "..XX....",
+  "........",
+]);
+
+// The icon and title line of a note card (plus "2/5" for checklists)
+function makeNoteHeader(note) {
+  const header = document.createElement("span");
+  header.className = "note-header";
+  if (note.icon && NOTE_ICONS[note.icon]) {
+    const icon = document.createElement("span");
+    icon.className = "note-icon";
+    icon.innerHTML = NOTE_ICONS[note.icon]; // fixed icon, no user text: safe
+    header.append(icon);
+  }
+  const title = document.createElement("span");
+  title.className = "note-title";
+  title.textContent = note.title; // textContent: user text shown as plain text
+  header.append(title);
+
+  if (note.kind === "checklist") {
+    const items = note.items || [];
+    const count = document.createElement("span");
+    count.className = "note-count";
+    count.textContent = `${items.filter((i) => i.done).length}/${items.length}`;
+    header.append(count);
+  }
+  return header;
+}
+
+// Free-text note: the whole card is one button that opens the form
+function makeTextNoteCard(note) {
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "note-card";
+  card.append(makeNoteHeader(note));
+
+  if (note.text) {
+    const preview = document.createElement("span");
+    preview.className = "note-preview";
+    preview.textContent = note.text;
+    card.append(preview);
+  }
+  card.addEventListener("click", () => openNoteForm(note));
+  return card;
+}
+
+// Checklist note: the header opens the form (title, icon, delete), and the
+// items can be ticked, deleted and added right on the card.
+// (Buttons can't contain other buttons, so here the card itself is a <div>.)
+function makeChecklistCard(note) {
+  const card = document.createElement("div");
+  card.className = "note-card";
+
+  const headerButton = document.createElement("button");
+  headerButton.type = "button";
+  headerButton.className = "note-header-button";
+  headerButton.append(makeNoteHeader(note));
+  headerButton.addEventListener("click", () => openNoteForm(note));
+
+  const list = document.createElement("ul");
+  list.className = "check-list";
+  for (const entry of note.items || []) {
+    const row = document.createElement("li");
+    row.className = entry.done ? "check-item done" : "check-item";
+
+    // Tap the item to tick or un-tick it
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "check-toggle";
+    toggle.setAttribute("aria-pressed", entry.done);
+    const box = document.createElement("span");
+    box.className = "check-box";
+    if (entry.done) box.innerHTML = CHECK_SVG; // fixed icon: safe
+    const text = document.createElement("span");
+    text.className = "check-text";
+    text.textContent = entry.text;
+    toggle.append(box, text);
+    toggle.addEventListener("click", () => {
+      entry.done = !entry.done;
+      saveNotes();
+      renderNotes();
+    });
+
+    // The ✕ deletes the item straight away (it's quick to add back)
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "check-remove";
+    remove.setAttribute("aria-label", `Delete ${entry.text}`);
+    remove.textContent = "✕";
+    remove.addEventListener("click", () => {
+      note.items = note.items.filter((i) => i.id !== entry.id);
+      saveNotes();
+      renderNotes();
+    });
+
+    row.append(toggle, remove);
+    list.append(row);
+  }
+
+  // "Add item": a small form, so the phone's Enter key also adds the item
+  const addForm = document.createElement("form");
+  addForm.className = "check-add";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.maxLength = 60;
+  input.placeholder = "Add item";
+  input.autocomplete = "off";
+  input.dataset.noteId = note.id; // to find this field again after redrawing
+  input.setAttribute("aria-label", `Add item to ${note.title}`);
+  const addButton = document.createElement("button");
+  addButton.type = "submit";
+  addButton.textContent = "+";
+  addButton.setAttribute("aria-label", "Add");
+  addForm.append(input, addButton);
+  addForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const itemText = input.value.trim();
+    if (itemText === "") return;
+    note.items = note.items || [];
+    note.items.push({ id: makeId(), text: itemText, done: false });
+    saveNotes();
+    renderNotes();
+    // Redrawing replaced the field; put the cursor back so you can keep adding
+    noteList.querySelector(`input[data-note-id="${note.id}"]`).focus();
+  });
+
+  card.append(headerButton, list, addForm);
+  return card;
+}
+
+// One card per note, in the order they were made
 function renderNotes() {
   noteList.innerHTML = "";
   notesEmpty.hidden = notes.length > 0;
 
   for (const note of notes) {
     const item = document.createElement("li");
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = "note-card";
-
-    const header = document.createElement("span");
-    header.className = "note-header";
-    if (note.icon && NOTE_ICONS[note.icon]) {
-      const icon = document.createElement("span");
-      icon.className = "note-icon";
-      icon.innerHTML = NOTE_ICONS[note.icon]; // fixed icon, no user text: safe
-      header.append(icon);
-    }
-    const title = document.createElement("span");
-    title.className = "note-title";
-    title.textContent = note.title; // textContent: user text shown as plain text
-    header.append(title);
-
-    const preview = document.createElement("span");
-    preview.className = "note-preview";
-    preview.textContent = note.text;
-
-    card.append(header);
-    if (note.text) card.append(preview);
-    card.addEventListener("click", () => openNoteForm(note));
-    item.append(card);
+    item.append(note.kind === "checklist" ? makeChecklistCard(note) : makeTextNoteCard(note));
     noteList.append(item);
   }
 }
@@ -1326,9 +1440,28 @@ const noteFormError = document.getElementById("note-form-error");
 const noteDeleteButton = document.getElementById("note-delete");
 const iconPicker = document.getElementById("icon-picker");
 const addNoteButton = document.getElementById("add-note-button");
+const noteKindField = document.getElementById("note-kind-field");
+const noteTextField = document.getElementById("note-text-field");
+const kindButtons = document.querySelectorAll(".kind-picker button");
 
 let editingNoteId = null;   // null = new note, otherwise the id being edited
 let selectedNoteIcon = null; // null = no icon
+let selectedNoteKind = "text"; // "text" or "checklist"
+
+// Choose the kind of a new note; checklists have no text box
+function selectNoteKind(kind) {
+  selectedNoteKind = kind;
+  kindButtons.forEach((button) => {
+    const isChosen = button.dataset.kind === kind;
+    button.classList.toggle("selected", isChosen);
+    button.setAttribute("aria-pressed", isChosen);
+  });
+  noteTextField.hidden = kind === "checklist";
+}
+
+kindButtons.forEach((button) =>
+  button.addEventListener("click", () => selectNoteKind(button.dataset.kind))
+);
 
 // One button per icon in the picker, made once at start-up
 for (const [name, svg] of Object.entries(NOTE_ICONS)) {
@@ -1368,13 +1501,17 @@ function openNoteForm(note = null) {
     editingNoteId = note.id;
     noteFormTitle.textContent = "Edit note";
     noteTitleInput.value = note.title;
-    noteTextInput.value = note.text;
+    noteTextInput.value = note.text || "";
     selectNoteIcon(note.icon || null);
+    selectNoteKind(note.kind === "checklist" ? "checklist" : "text");
   } else {
     editingNoteId = null;
     noteFormTitle.textContent = "New note";
     selectNoteIcon(null);
+    selectNoteKind("text");
   }
+  // The kind can only be chosen when creating a note
+  noteKindField.hidden = note !== null;
   noteDeleteButton.hidden = note === null; // can only delete existing notes
   noteModal.hidden = false;
   // Like quests: the keyboard only pops up by itself for a new note
@@ -1402,12 +1539,15 @@ noteForm.addEventListener("submit", (event) => {
   const fields = {
     title: title,
     icon: selectedNoteIcon,  // null = no icon
-    kind: "text",            // free-text note (checklists come in step 3b)
-    text: noteTextInput.value,
   };
+  if (selectedNoteKind === "text") fields.text = noteTextInput.value;
 
   if (editingNoteId === null) {
-    notes.push({ id: makeId(), ...fields });
+    // New note: free text, or an empty checklist to fill on its card
+    const kindFields = selectedNoteKind === "checklist"
+      ? { kind: "checklist", text: "", items: [] }
+      : { kind: "text", items: [] };
+    notes.push({ id: makeId(), ...kindFields, ...fields });
   } else {
     Object.assign(notes.find((n) => n.id === editingNoteId), fields);
   }

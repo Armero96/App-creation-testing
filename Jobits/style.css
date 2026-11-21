@@ -827,3 +827,154 @@ h1, h2 {
   color: var(--bg);
   background: var(--pink);
 }
+
+/* ===== Checklist notes ===== */
+
+/* "Free text" / "Checklist" choice in the note form */
+.kind-picker {
+  display: flex;
+  gap: 8px;
+}
+
+.kind-option {
+  flex: 1;
+  min-height: 44px;
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--text);
+  background: var(--panel);
+  border: 4px solid var(--text);
+  cursor: pointer;
+}
+
+.kind-option.selected {
+  color: var(--bg);
+  background: var(--text);
+}
+
+/* "2/5" after a checklist's title */
+.note-count {
+  margin-left: auto;           /* pushed to the right end of the line */
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* The header of a checklist card is a button that looks like plain text */
+.note-header-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.check-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Tapping anywhere on the item's line ticks it */
+.check-toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;            /* easy to tap */
+  padding: 4px 0;
+  text-align: left;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.check-box {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 2px;
+  border: 4px solid var(--text);
+  background: var(--bg);
+}
+
+.check-box svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: var(--green);
+}
+
+.check-text {
+  overflow-wrap: anywhere;
+}
+
+/* Ticked items: green box, crossed-out muted text */
+.check-item.done .check-box {
+  border-color: var(--green);
+}
+
+.check-item.done .check-text {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+/* The ✕ that deletes an item */
+.check-remove {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* "Add item" field with its + button */
+.check-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.check-add input {
+  flex: 1;
+  min-width: 0;                /* lets the field shrink on narrow phones */
+  padding: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--bg);
+  background: var(--text);
+  border: 4px solid var(--muted);
+  border-radius: 0;
+}
+
+.check-add input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.check-add button {
+  width: 48px;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--bg);
+  background: var(--pink);
+  border: 4px solid var(--text);
+  cursor: pointer;
+}

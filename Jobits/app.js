@@ -12,6 +12,7 @@ const STORAGE_KEY = "jobits.habits";
 const COMPLETIONS_KEY = "jobits.completions";
 const COMPLETED_DAYS_KEY = "jobits.completedDays";
 const FILTERS_KEY = "jobits.filters";   // the Quests screen's last chosen filters
+const NOTES_KEY = "jobits.notes";
 
 // Read something from localStorage; if it's missing or broken, use the fallback
 function loadFromStorage(key, fallback) {
@@ -36,6 +37,10 @@ function saveCompletedDays() {
   localStorage.setItem(COMPLETED_DAYS_KEY, JSON.stringify(completedDays));
 }
 
+function saveNotes() {
+  localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+}
+
 // The list of all habits, kept in memory while the app is open.
 // Each habit looks like:
 // { id, name, exp, date: "YYYY-MM-DD", repeat: null | "daily" | ..., timing: "morning" | ...,
@@ -52,6 +57,10 @@ let completions = loadFromStorage(COMPLETIONS_KEY, {});
 // Only today's entry is ever changed; once a day is over, its result is frozen.
 // Level and ascension are both worked out from this record.
 let completedDays = loadFromStorage(COMPLETED_DAYS_KEY, {});
+
+// The notes on the Notes screen. Each looks like:
+// { id, title, icon: null | "cart" | ..., kind: "text", text }
+let notes = loadFromStorage(NOTES_KEY, []);
 
 
 // ===== Small helpers =====
@@ -598,6 +607,7 @@ function renderAll() {
   renderLevel();
   renderMainScreen();
   renderHabitList();
+  renderNotes();
 }
 
 
@@ -779,10 +789,12 @@ function resetEverything() {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(COMPLETIONS_KEY);
   localStorage.removeItem(COMPLETED_DAYS_KEY);
+  localStorage.removeItem(NOTES_KEY);
   // ...and the copies in memory
   habits = [];
   completions = {};
   completedDays = {};
+  notes = [];
   // Forget the last shown level, so no message pops up after the reset
   shownLevel = null;
   shownAscension = null;
@@ -792,7 +804,8 @@ function resetEverything() {
 
 // ===== Backup: export and import =====
 // A backup is a small JSON text file with everything the game needs:
-// quests, ticks and completed days (level and ascension come from those).
+// quests, ticks and completed days (level and ascension come from those),
+// and notes. Backups from before notes existed simply have no notes.
 // Filters are a display setting, so they aren't included.
 
 const BACKUP_VERSION = 1; // bump if the file layout ever changes
@@ -824,6 +837,7 @@ exportButton.addEventListener("click", () => {
     habits: habits,
     completions: completions,
     completedDays: completedDays,
+    notes: notes,
   };
   const text = JSON.stringify(backup, null, 2); // indented, readable by humans
   const file = new Blob([text], { type: "application/json" });
@@ -861,9 +875,11 @@ importFile.addEventListener("change", async () => {
   pendingBackup = backup;
   const questCount = backup.habits.length;
   const dayCount = Object.keys(backup.completions).length;
+  const noteCount = (backup.notes || []).length;
   importSummary.textContent =
-    `This backup has ${questCount} quest${questCount === 1 ? "" : "s"} ` +
-    `and ${dayCount} day${dayCount === 1 ? "" : "s"} of ticks.`;
+    `This backup has ${questCount} quest${questCount === 1 ? "" : "s"}, ` +
+    `${dayCount} day${dayCount === 1 ? "" : "s"} of ticks ` +
+    `and ${noteCount} note${noteCount === 1 ? "" : "s"}.`;
   showBackupMessage("");
   importModal.hidden = false;
 });
@@ -889,7 +905,14 @@ function isValidBackup(backup) {
   const ticksOk = Object.values(backup.completions).every(
     (ids) => Array.isArray(ids) && ids.every((id) => typeof id === "string")
   );
-  return questsOk && ticksOk;
+  // Notes are optional (older backups have none); if there, each needs an id and title
+  const notesOk = backup.notes === undefined || (
+    Array.isArray(backup.notes) &&
+    backup.notes.every((note) =>
+      isObject(note) && typeof note.id === "string" && typeof note.title === "string"
+    )
+  );
+  return questsOk && ticksOk && notesOk;
 }
 
 // ----- Import, part 2: replace or merge -----
@@ -909,6 +932,7 @@ function finishImport(message) {
   saveHabits();
   saveCompletions();
   saveCompletedDays();
+  saveNotes();
   shownLevel = null;
   shownAscension = null;
   closeImport();
@@ -922,6 +946,7 @@ importReplaceButton.addEventListener("click", () =>
     habits = pendingBackup.habits;
     completions = pendingBackup.completions;
     completedDays = pendingBackup.completedDays;
+    notes = pendingBackup.notes || [];
     finishImport("Backup loaded (replaced).");
   })
 );
@@ -946,6 +971,10 @@ importMergeButton.addEventListener("click", () => {
   for (const [day, done] of Object.entries(backup.completedDays)) {
     if (done) completedDays[day] = true;
   }
+
+  // Notes: like quests, add the missing ones; if in both, keep this phone's
+  const knownNoteIds = new Set(notes.map((note) => note.id));
+  notes = notes.concat((backup.notes || []).filter((note) => !knownNoteIds.has(note.id)));
 
   finishImport(`Backup merged (${newQuests.length} new quest${newQuests.length === 1 ? "" : "s"}).`);
 });
@@ -1042,6 +1071,7 @@ function openForm(habit = null) {
 
 function closeForm() {
   modal.hidden = true;
+  document.activeElement.blur(); // take the cursor out of the hidden form
 }
 
 // (Wrapped in a function so the click event isn't passed in as a "habit")
@@ -1145,27 +1175,283 @@ function saveQuest(fields) {
 }
 
 
+// ===== Notes screen =====
+// Notes are separate from quests: they don't give exp or affect the game.
+
+// The pixel icons a note can have. Same text-picture method as the category
+// icons: every "X" is one pixel.
+const NOTE_ICONS = {
+  cart: pixelIcon([      // shopping cart
+    "XX......",
+    ".X......",
+    ".XXXXXXX",
+    ".X.X.X.X",
+    ".XXXXXXX",
+    ".X......",
+    ".XXXXXX.",
+    "..X...X.",
+  ]),
+  book: pixelIcon([      // closed book, pages on the right
+    "XXXXXX..",
+    "X....XX.",
+    "X.XX.XX.",
+    "X....XX.",
+    "X.XX.XX.",
+    "X....XX.",
+    "XXXXXXX.",
+    ".XXXXXX.",
+  ]),
+  star: pixelIcon([
+    "...XX...",
+    "...XX...",
+    "XXXXXXXX",
+    ".XXXXXX.",
+    "..XXXX..",
+    ".XXXXXX.",
+    ".XX..XX.",
+    "X......X",
+  ]),
+  bulb: pixelIcon([      // light bulb, for ideas
+    "..XXXX..",
+    ".XXXXXX.",
+    "XXXXXXXX",
+    "XXXXXXXX",
+    ".XXXXXX.",
+    "..X..X..",
+    "..XXXX..",
+    "...XX...",
+  ]),
+  house: pixelIcon([
+    "...XX...",
+    "..XXXX..",
+    ".XXXXXX.",
+    "XXXXXXXX",
+    ".XXXXXX.",
+    ".XX..XX.",
+    ".XX..XX.",
+    ".XX..XX.",
+  ]),
+  gift: pixelIcon([      // present with a bow; the gap is the ribbon
+    "..X..X..",
+    "...XX...",
+    "XXXXXXXX",
+    "XXX..XXX",
+    ".XX..XX.",
+    ".XX..XX.",
+    ".XX..XX.",
+    ".XXXXXX.",
+  ]),
+  music: pixelIcon([     // two beamed music notes
+    "..XXXXXX",
+    "..X....X",
+    "..X....X",
+    "..X....X",
+    ".XX...XX",
+    "XXX..XXX",
+    "XXX..XXX",
+    ".X....X.",
+  ]),
+  pin: pixelIcon([       // push pin
+    "..XXXX..",
+    "..XXXX..",
+    "..XXXX..",
+    ".XXXXXX.",
+    "XXXXXXXX",
+    "...XX...",
+    "...XX...",
+    "...X....",
+  ]),
+};
+
+// The Notes dot in the bottom indicator: a page with lines of text
+document.getElementById("notes-dot").innerHTML = pixelIcon([
+  "XXXXXX..",
+  "X....XX.",
+  "X.XX..X.",
+  "X.....X.",
+  "X.XXX.X.",
+  "X.....X.",
+  "X.XX..X.",
+  "XXXXXXX.",
+]);
+
+const noteList = document.getElementById("note-list");
+const notesEmpty = document.getElementById("notes-empty");
+
+// One card per note: icon and title on top, then the start of the text.
+// Tapping a card opens it in the note form.
+function renderNotes() {
+  noteList.innerHTML = "";
+  notesEmpty.hidden = notes.length > 0;
+
+  for (const note of notes) {
+    const item = document.createElement("li");
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "note-card";
+
+    const header = document.createElement("span");
+    header.className = "note-header";
+    if (note.icon && NOTE_ICONS[note.icon]) {
+      const icon = document.createElement("span");
+      icon.className = "note-icon";
+      icon.innerHTML = NOTE_ICONS[note.icon]; // fixed icon, no user text: safe
+      header.append(icon);
+    }
+    const title = document.createElement("span");
+    title.className = "note-title";
+    title.textContent = note.title; // textContent: user text shown as plain text
+    header.append(title);
+
+    const preview = document.createElement("span");
+    preview.className = "note-preview";
+    preview.textContent = note.text;
+
+    card.append(header);
+    if (note.text) card.append(preview);
+    card.addEventListener("click", () => openNoteForm(note));
+    item.append(card);
+    noteList.append(item);
+  }
+}
+
+// ----- The note form -----
+
+const noteModal = document.getElementById("note-modal");
+const noteForm = document.getElementById("note-form");
+const noteFormTitle = document.getElementById("note-form-title");
+const noteTitleInput = document.getElementById("note-title");
+const noteTextInput = document.getElementById("note-text");
+const noteFormError = document.getElementById("note-form-error");
+const noteDeleteButton = document.getElementById("note-delete");
+const iconPicker = document.getElementById("icon-picker");
+const addNoteButton = document.getElementById("add-note-button");
+
+let editingNoteId = null;   // null = new note, otherwise the id being edited
+let selectedNoteIcon = null; // null = no icon
+
+// One button per icon in the picker, made once at start-up
+for (const [name, svg] of Object.entries(NOTE_ICONS)) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "icon-option";
+  button.dataset.icon = name;
+  button.setAttribute("aria-label", name);
+  button.innerHTML = svg;
+  // Tapping an icon chooses it; tapping the chosen one again clears it
+  button.addEventListener("click", () =>
+    selectNoteIcon(selectedNoteIcon === name ? null : name)
+  );
+  iconPicker.append(button);
+}
+
+// Choose an icon in the form, and highlight only that button
+function selectNoteIcon(icon) {
+  selectedNoteIcon = icon;
+  iconPicker.querySelectorAll(".icon-option").forEach((button) => {
+    const isChosen = button.dataset.icon === icon;
+    button.classList.toggle("selected", isChosen);
+    button.setAttribute("aria-pressed", isChosen);
+  });
+}
+
+function isNoteFormOpen() {
+  return !noteModal.hidden;
+}
+
+// Open the form, empty for a new note, or filled in to edit one
+function openNoteForm(note = null) {
+  noteForm.reset();
+  noteFormError.textContent = "";
+
+  if (note) {
+    editingNoteId = note.id;
+    noteFormTitle.textContent = "Edit note";
+    noteTitleInput.value = note.title;
+    noteTextInput.value = note.text;
+    selectNoteIcon(note.icon || null);
+  } else {
+    editingNoteId = null;
+    noteFormTitle.textContent = "New note";
+    selectNoteIcon(null);
+  }
+  noteDeleteButton.hidden = note === null; // can only delete existing notes
+  noteModal.hidden = false;
+  // Like quests: the keyboard only pops up by itself for a new note
+  if (!note) noteTitleInput.focus();
+}
+
+function closeNoteForm() {
+  noteModal.hidden = true;
+  document.activeElement.blur(); // take the cursor out of the hidden form
+}
+
+// (Wrapped in a function so the click event isn't passed in as a "note")
+addNoteButton.addEventListener("click", () => openNoteForm());
+document.getElementById("note-cancel").addEventListener("click", closeNoteForm);
+
+noteForm.addEventListener("submit", (event) => {
+  event.preventDefault(); // stop the browser from reloading the page
+
+  const title = noteTitleInput.value.trim();
+  if (title === "") {
+    noteFormError.textContent = "Please enter a title.";
+    return;
+  }
+
+  const fields = {
+    title: title,
+    icon: selectedNoteIcon,  // null = no icon
+    kind: "text",            // free-text note (checklists come in step 3b)
+    text: noteTextInput.value,
+  };
+
+  if (editingNoteId === null) {
+    notes.push({ id: makeId(), ...fields });
+  } else {
+    Object.assign(notes.find((n) => n.id === editingNoteId), fields);
+  }
+  saveNotes();
+  renderNotes();
+  closeNoteForm();
+});
+
+// Delete needs two taps, like deleting a quest
+noteDeleteButton.addEventListener("click", () =>
+  confirmTwice(noteDeleteButton, "Delete note", "Sure? Tap again", () => {
+    notes = notes.filter((n) => n.id !== editingNoteId);
+    saveNotes();
+    renderNotes();
+    closeNoteForm();
+  })
+);
+
+
 // ===== Screen switching =====
-// Screen 0 = Main (today), screen 1 = Habits.
+// Screen 0 = Notes, screen 1 = Main (today), screen 2 = Quests (habits).
 
 const track = document.getElementById("track");
 const dots = document.querySelectorAll(".dot");
-const SCREEN_COUNT = 2;
+const SCREEN_COUNT = 3;
+const MAIN_SCREEN = 1;
 
-let currentScreen = 0;
+let currentScreen = MAIN_SCREEN;
 
-// Show the screen with the given number (0 or 1).
+// Show the screen with the given number (0, 1 or 2).
 function showScreen(index) {
   // Don't go past the first or last screen
   if (index < 0 || index >= SCREEN_COUNT) return;
   currentScreen = index;
 
-  // Slide the track. Each screen is 50% of the track's width,
-  // so screen 1 means moving the track 50% to the left.
-  track.style.transform = `translateX(-${index * 50}%)`;
+  // Slide the track. Each screen is a third of the track's width,
+  // so screen 1 means moving the track a third of the way to the left.
+  track.style.transform = `translateX(-${(index * 100) / SCREEN_COUNT}%)`;
 
   // Highlight the matching dot in the indicator
   dots.forEach((dot, i) => dot.classList.toggle("active", i === index));
+
+  // The "add note" button only belongs on the Notes screen
+  addNoteButton.hidden = index !== 0;
 }
 
 // ----- Keyboard (computer) -----
@@ -1180,6 +1466,10 @@ document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeImport();
     return;
   }
+  if (isNoteFormOpen()) {
+    if (event.key === "Escape") closeNoteForm();
+    return;
+  }
   if (event.key === "ArrowRight") showScreen(currentScreen + 1);
   if (event.key === "ArrowLeft") showScreen(currentScreen - 1);
 });
@@ -1189,14 +1479,19 @@ document.addEventListener("keydown", (event) => {
 const SWIPE_MIN_DISTANCE = 50; // pixels the finger must move to count as a swipe
 let touchStartX = 0;
 let touchStartY = 0;
+let touchStartedInField = false;
 
 track.addEventListener("touchstart", (event) => {
   touchStartX = event.touches[0].clientX;
   touchStartY = event.touches[0].clientY;
+  // A drag that starts in a text box is selecting text, not swiping
+  touchStartedInField = event.target.closest("input, textarea, select") !== null;
 });
 
 track.addEventListener("touchend", (event) => {
-  if (isFormOpen() || isImportOpen()) return; // no swiping while a popup is open
+  // no swiping while a popup is open
+  if (isFormOpen() || isImportOpen() || isNoteFormOpen()) return;
+  if (touchStartedInField) return;
 
   const dx = event.changedTouches[0].clientX - touchStartX;
   const dy = event.changedTouches[0].clientY - touchStartY;
@@ -1204,8 +1499,8 @@ track.addEventListener("touchend", (event) => {
   // Ignore mostly-vertical movements (those are scrolling, not swiping)
   if (Math.abs(dx) < SWIPE_MIN_DISTANCE || Math.abs(dx) < Math.abs(dy)) return;
 
-  // Finger moved left (dx negative) -> go to the next screen (Habits).
-  // Finger moved right (dx positive) -> go back (Main).
+  // Finger moved left (dx negative) -> the screen to the right (e.g. Main -> Quests).
+  // Finger moved right (dx positive) -> the screen to the left (e.g. Main -> Notes).
   if (dx < 0) showScreen(currentScreen + 1);
   else showScreen(currentScreen - 1);
 });
@@ -1236,8 +1531,8 @@ document.addEventListener("visibilitychange", () => {
 
 
 // ===== Start-up =====
-showScreen(0);      // start on the Main screen
-renderAll();        // draw both screens from the saved data
+showScreen(MAIN_SCREEN); // start on the Main screen
+renderAll();        // draw all screens from the saved data
 
 // Register the service worker (sw.js), which makes the app work offline
 // and installable. Older browsers without support simply skip this.

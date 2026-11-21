@@ -19,8 +19,17 @@
 
   <!-- The "viewport" is the window you look through; it shows one screen at a time. -->
   <main class="viewport">
-    <!-- The "track" holds both screens side by side. We slide it left/right to switch. -->
+    <!-- The "track" holds the three screens side by side. We slide it left/right to switch. -->
     <div class="track" id="track">
+
+      <!-- ===== Screen 0: Notes ===== -->
+      <section class="screen" id="screen-notes" aria-label="Notes">
+        <h1>Notes</h1>
+        <!-- Shown only when there are no notes -->
+        <p class="placeholder" id="notes-empty">No notes yet</p>
+        <!-- app.js fills this with one card per note -->
+        <ul class="note-list" id="note-list"></ul>
+      </section>
 
       <!-- ===== Screen 1: Main (today) ===== -->
       <section class="screen" id="screen-main" aria-label="Today">
@@ -122,8 +131,14 @@
 
   <!-- Screen indicator: one dot per screen, each with a small pixel icon.
        Icons are drawn as tiny SVG squares ("pixels") on an 8x8 grid. -->
+  <!-- Adds a new note. It lives outside the sliding track, so app.js
+       shows it only while the Notes screen is on display. -->
+  <button class="add-button" id="add-note-button" type="button" aria-label="Add note" hidden>+</button>
+
   <nav class="indicator" aria-hidden="true">
-    <span class="dot" data-screen="0" title="Today">
+    <!-- Note page; app.js draws its pixel icon -->
+    <span class="dot" data-screen="0" title="Notes" id="notes-dot"></span>
+    <span class="dot" data-screen="1" title="Today">
       <!-- Sword: blade going up-right, crossguard, handle, pommel -->
       <svg viewBox="0 0 8 8" shape-rendering="crispEdges">
         <rect x="7" y="0" width="1" height="1"/>
@@ -138,7 +153,7 @@
         <rect x="0" y="7" width="1" height="1"/>
       </svg>
     </span>
-    <span class="dot" data-screen="1" title="Quests">
+    <span class="dot" data-screen="2" title="Quests">
       <!-- List: three bullet points with lines -->
       <svg viewBox="0 0 8 8" shape-rendering="crispEdges">
         <rect x="0" y="1" width="1" height="1"/><rect x="2" y="1" width="6" height="1"/>
@@ -229,6 +244,34 @@
         <button type="button" class="button-secondary" id="cancel-button">Cancel</button>
         <button type="submit" class="button-primary">Save</button>
       </div>
+    </form>
+  </div>
+
+  <!-- ===== "New note" / "Edit note" popup ===== -->
+  <div class="modal" id="note-modal" hidden>
+    <form class="habit-form" id="note-form" novalidate>
+      <!-- app.js changes this to "Edit note" when editing -->
+      <h2 id="note-form-title">New note</h2>
+
+      <label for="note-title">Title</label>
+      <input type="text" id="note-title" maxlength="40" autocomplete="off">
+
+      <!-- Icon: tap one to choose it, tap it again to clear it.
+           app.js fills this with one button per icon. -->
+      <p class="form-label" id="note-icon-label">Icon (optional)</p>
+      <div class="icon-picker" id="icon-picker" role="group" aria-labelledby="note-icon-label"></div>
+
+      <label for="note-text">Text</label>
+      <textarea id="note-text" rows="8"></textarea>
+
+      <p class="form-error" id="note-form-error"></p>
+
+      <div class="form-buttons">
+        <button type="button" class="button-secondary" id="note-cancel">Cancel</button>
+        <button type="submit" class="button-primary">Save</button>
+      </div>
+      <!-- Only shown when editing an existing note (two taps) -->
+      <button type="button" class="note-delete" id="note-delete" hidden>Delete note</button>
     </form>
   </div>
 

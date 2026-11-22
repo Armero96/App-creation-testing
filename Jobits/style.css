@@ -124,6 +124,20 @@ html, body {
   color: var(--accent);
 }
 
+/* This month's stats: three category badges side by side under the level */
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.stats .category-chip {
+  margin-right: 0;
+  padding: 4px 8px 4px 6px;
+  font-size: 10px;
+}
+
 /* "Level-up!" message. It always takes up its space (so nothing jumps around),
    but is only visible while it has the "show" class. */
 .level-up {

@@ -423,8 +423,53 @@ function showLevelUpMessage(text) {
   levelUpTimer = setTimeout(() => levelUpMessage.classList.remove("show"), LEVEL_UP_TIME);
 }
 
+// ===== Category stats (STR / MIND / CON) =====
+// Each category's stat goes up 1 level per 100 exp earned in that category
+// in a calendar month, starting at level 1, and starts again each month.
+
+const EXP_PER_STAT_LEVEL = 100;
+
+// Total exp per category for a month, e.g. monthStats("2026-11")
+// -> { strength: 240, mind: 430, constitution: 160 }.
+// Worked out from the ticks log, using each quest's current exp and category.
+function monthStats(month) {
+  const totals = {};
+  for (const category of Object.keys(CATEGORIES)) totals[category] = 0;
+
+  const byId = new Map(habits.map((h) => [h.id, h])); // quick lookup by id
+  for (const [day, ids] of Object.entries(completions)) {
+    if (!day.startsWith(month)) continue;   // "2026-11-05" starts with "2026-11"
+    for (const id of ids) {
+      const habit = byId.get(id);
+      // deleted quests, standing quests and quests without a category add nothing
+      if (!habit || habit.standing || !CATEGORIES[habit.category]) continue;
+      totals[habit.category] += habit.exp;
+    }
+  }
+  return totals;
+}
+
+// 0-99 exp = level 1, 100-199 = level 2, ...
+function statLevel(exp) {
+  return 1 + Math.floor(exp / EXP_PER_STAT_LEVEL);
+}
+
+const statsRow = document.getElementById("stats");
+
+// The three badges under the adventurer, e.g. [arm STR 3] [brain MIND 5] [heart CON 2]
+function renderStats(today) {
+  const totals = monthStats(today.slice(0, 7)); // "2026-11-22" -> "2026-11"
+  statsRow.innerHTML = "";
+  for (const [category, exp] of Object.entries(totals)) {
+    const badge = makeCategoryChip(category); // same look as the quest labels
+    badge.append(` ${statLevel(exp)}`);
+    statsRow.append(badge);
+  }
+}
+
 function renderLevel() {
   const today = todayString();
+  renderStats(today);
   const level = getLevel(today);
   const ascension = getAscension();
 

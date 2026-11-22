@@ -1792,6 +1792,107 @@ document.getElementById("calendar-prev").addEventListener("click", () => changeC
 document.getElementById("calendar-next").addEventListener("click", () => changeCalendarMonth(1));
 
 
+// ===== Stats popup =====
+// Tapping the adventurer shows this month's stats in detail,
+// with arrows to look back at previous months.
+
+const statsModal = document.getElementById("stats-modal");
+const statsTitle = document.getElementById("stats-title");
+const statsDetail = document.getElementById("stats-detail");
+const statsPrev = document.getElementById("stats-prev");
+const statsNext = document.getElementById("stats-next");
+
+let statsYear = 0;
+let statsMonth = 0; // 0 = January, like JavaScript dates
+
+// e.g. (2026, 10) -> "2026-11"  (JavaScript counts months from 0)
+function monthKey(year, month) {
+  return `${year}-${String(month + 1).padStart(2, "0")}`;
+}
+
+// One block per stat: label, level, exp, and a bar towards the next level
+function makeStatBlock(category, exp) {
+  const level = statLevel(exp);
+  const intoLevel = exp % EXP_PER_STAT_LEVEL;        // exp earned since the last level
+  const toNext = EXP_PER_STAT_LEVEL - intoLevel;     // exp still needed for the next one
+
+  const block = document.createElement("div");
+  block.className = `stat-block cat-${category}`;
+
+  const header = document.createElement("div");
+  header.className = "stat-header";
+  const name = document.createElement("span");
+  name.textContent = CATEGORIES[category].name;
+  name.prepend(makeCategoryChip(category));
+  const levelText = document.createElement("span");
+  levelText.className = "stat-level";
+  levelText.textContent = `Level ${level}`;
+  header.append(name, levelText);
+
+  // The bar fills up from one level to the next (0 to 100 exp)
+  const bar = document.createElement("div");
+  bar.className = "progress stat-bar";
+  const fill = document.createElement("div");
+  fill.className = "progress-fill";
+  fill.style.width = `${(intoLevel / EXP_PER_STAT_LEVEL) * 100}%`;
+  bar.append(fill);
+
+  const expText = document.createElement("p");
+  expText.className = "stat-exp";
+  expText.textContent = `${exp} exp · ${toNext} to level ${level + 1}`;
+
+  block.append(header, bar, expText);
+  return block;
+}
+
+function renderStatsPopup() {
+  statsTitle.textContent = formatMonthTitle(statsYear, statsMonth);
+  const key = monthKey(statsYear, statsMonth);
+
+  statsDetail.innerHTML = "";
+  for (const [category, exp] of Object.entries(monthStats(key))) {
+    statsDetail.append(makeStatBlock(category, exp));
+  }
+
+  // No going into the future, or back before the first month anything was ticked
+  // ("YYYY-MM" strings sort like dates, so < and >= compare them correctly)
+  const thisMonth = todayString().slice(0, 7);
+  const first = firstTrackedDay();
+  const firstMonth = first ? first.slice(0, 7) : thisMonth;
+  statsNext.disabled = key >= thisMonth;
+  statsPrev.disabled = key <= firstMonth;
+}
+
+// Move a month back (-1) or forward (+1)
+function changeStatsMonth(step) {
+  const date = new Date(statsYear, statsMonth + step, 1);
+  statsYear = date.getFullYear();
+  statsMonth = date.getMonth();
+  renderStatsPopup();
+}
+
+function openStats() {
+  const today = parseDate(todayString());
+  statsYear = today.getFullYear();
+  statsMonth = today.getMonth();
+  renderStatsPopup();
+  statsModal.hidden = false;
+}
+
+function closeStats() {
+  statsModal.hidden = true;
+}
+
+function isStatsOpen() {
+  return !statsModal.hidden;
+}
+
+document.getElementById("adventurer").addEventListener("click", openStats);
+document.getElementById("stats-close").addEventListener("click", closeStats);
+statsPrev.addEventListener("click", () => changeStatsMonth(-1));
+statsNext.addEventListener("click", () => changeStatsMonth(1));
+
+
 // ===== Date picker (quest form) =====
 // Jobits' own date picker, so weeks start on Monday whatever the phone's
 // settings. The chosen date lives in the hidden #habit-date field; the
@@ -1935,6 +2036,10 @@ document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeCalendar();
     return;
   }
+  if (isStatsOpen()) {
+    if (event.key === "Escape") closeStats();
+    return;
+  }
   if (event.key === "ArrowRight") showScreen(currentScreen + 1);
   if (event.key === "ArrowLeft") showScreen(currentScreen - 1);
 });
@@ -1955,7 +2060,7 @@ track.addEventListener("touchstart", (event) => {
 
 track.addEventListener("touchend", (event) => {
   // no swiping while a popup is open
-  if (isFormOpen() || isImportOpen() || isNoteFormOpen() || isCalendarOpen()) return;
+  if (isFormOpen() || isImportOpen() || isNoteFormOpen() || isCalendarOpen() || isStatsOpen()) return;
   if (touchStartedInField) return;
 
   const dx = event.changedTouches[0].clientX - touchStartX;

@@ -117,6 +117,14 @@ html, body {
   margin-bottom: 12px;
 }
 
+/* The adventurer is a button (it opens the stats popup), so undo the
+   browser's own button look */
+button.adventurer {
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+}
+
 .level {
   margin: 0;
   text-align: center;
@@ -1136,6 +1144,53 @@ h1, h2 {
   margin: 0;
   padding-left: 16px;
   overflow-wrap: anywhere;
+}
+
+/* ===== Stats popup ===== */
+
+/* A greyed-out arrow at the first / last month you can see */
+.month-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.stat-block {
+  margin-bottom: 16px;
+}
+
+/* Category name on the left, "Level N" on the right */
+.stat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 10px;
+}
+
+.stat-level {
+  color: var(--accent);
+}
+
+/* Thinner than the day's bar, and in the category's colour */
+.stat-bar {
+  height: 16px;
+}
+
+.stat-bar .progress-fill {
+  background: var(--cat);
+}
+
+.stat-exp {
+  margin: 6px 0 0;
+  font-size: 8px;
+  color: var(--muted);
+}
+
+.stats-note {
+  margin: 0;
+  font-size: 8px;
+  line-height: 1.6;
+  color: var(--muted);
 }
 
 .calendar-close {

@@ -45,9 +45,10 @@
         </div>
 
         <!-- Placeholder for the adventurer: just shows the current sword -->
-        <div class="adventurer">
-          <p id="sword-name">Wooden sword</p>
-        </div>
+        <!-- Tapping the adventurer opens the stats popup -->
+        <button type="button" class="adventurer" id="adventurer" aria-label="Open stats">
+          <span id="sword-name">Wooden sword</span>
+        </button>
 
         <!-- Current level, and a message that pops up for a few seconds on level-up -->
         <p class="level" id="level-label">Level 1</p>
@@ -316,6 +317,23 @@
       <!-- Details of the tapped day -->
       <div class="calendar-details" id="calendar-details"></div>
       <button type="button" class="button-secondary calendar-close" id="calendar-close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== Stats popup =====
+       Opened by tapping the adventurer on the Main screen. -->
+  <div class="modal" id="stats-modal" hidden>
+    <div class="habit-form stats-dialog" role="dialog" aria-labelledby="stats-title">
+      <!-- Month name with arrows to the previous / next month -->
+      <div class="month-nav">
+        <button type="button" class="month-arrow" id="stats-prev" aria-label="Previous month">&lt;</button>
+        <h2 id="stats-title"></h2>
+        <button type="button" class="month-arrow" id="stats-next" aria-label="Next month">&gt;</button>
+      </div>
+      <!-- app.js fills this with one block per stat -->
+      <div id="stats-detail"></div>
+      <p class="stats-note">Every 100 exp in a category gives +1 level. Stats start again on the 1st of each month.</p>
+      <button type="button" class="button-secondary calendar-close" id="stats-close">Close</button>
     </div>
   </div>
 

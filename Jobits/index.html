@@ -47,7 +47,8 @@
         <!-- Placeholder for the adventurer: just shows the current sword -->
         <!-- Tapping the adventurer opens the stats popup -->
         <button type="button" class="adventurer" id="adventurer" aria-label="Open stats">
-          <span id="sword-name">Wooden sword</span>
+          <!-- app.js draws the adventurer and its gear here -->
+          <canvas class="adventurer-art" id="adventurer-art"></canvas>
         </button>
 
         <!-- Current level, and a message that pops up for a few seconds on level-up -->
@@ -330,6 +331,9 @@
         <h2 id="stats-title"></h2>
         <button type="button" class="month-arrow" id="stats-next" aria-label="Next month">&gt;</button>
       </div>
+      <!-- The adventurer as it looked that month (or today, for this month) -->
+      <canvas class="adventurer-art stats-art" id="stats-art"></canvas>
+      <p class="stats-gear" id="stats-gear"></p>
       <!-- app.js fills this with one block per stat -->
       <div id="stats-detail"></div>
       <p class="stats-note">Every 100 exp in a category gives +1 level. Stats start again on the 1st of each month.</p>

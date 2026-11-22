@@ -405,7 +405,8 @@ let levelUpTimer = null;
 
 const levelLabel = document.getElementById("level-label");
 const levelUpMessage = document.getElementById("level-up");
-const swordName = document.getElementById("sword-name");
+const adventurerButton = document.getElementById("adventurer");
+const adventurerArt = document.getElementById("adventurer-art");
 const ascensionLabel = document.getElementById("ascension-label");
 const todayDateLabel = document.getElementById("today-date-text");
 
@@ -467,6 +468,185 @@ function renderStats(today) {
   }
 }
 
+// ===== Adventurer artwork =====
+// The adventurer is drawn pixel by pixel on a <canvas>, one canvas pixel per
+// art pixel; CSS then scales it up (with "pixelated" so it stays sharp).
+// Each piece of gear comes in the 7 sword materials:
+//   sword = this week's level; shield = STR, helmet = MIND, armour = CON (this month).
+
+// Light, mid and dark shade of each material (same names as SWORDS)
+const MATERIALS = {
+  Wooden:   ["#e3a868", "#ab6c3b", "#6b3d1f"],
+  Stone:    ["#c2c3c7", "#8b8d94", "#5a5c63"],
+  Copper:   ["#f6ad7b", "#d0703a", "#8a4220"],
+  Iron:     ["#e4e8ef", "#a7aeba", "#6c7380"],
+  Silver:   ["#ffffff", "#d6dde8", "#9aa6b8"],
+  Golden:   ["#fff27a", "#ffcc1a", "#c08a00"],
+  Obsidian: ["#8a63e8", "#3b2a6b", "#1a1230"],
+};
+
+// Colours that don't depend on the gear: skin, hair, clothes, plume, ground shadow
+const ART_COLOURS = {
+  s: "#f4c08f", S: "#d99b6a", e: "#1a1c2c", h: "#7a3b1d", m: "#b0574a",
+  c: "#008751", C: "#005c35", p: "#5f574f", b: "#3b2a20", x: "#ff004d",
+  G: "#5c3a1e", z: "#141c3a",
+};
+const ART_OUTLINE = "#1a1c2c";
+
+// Pixel maps. "." or space = see-through. 1/2/3 = the gear's light/mid/dark
+// shade; other letters are ART_COLOURS. Outlines are added automatically.
+const ART_BODY = [
+  "",
+  "",
+  "",
+  "",
+  "           hhhhhh",
+  "          hhhhhhhh",
+  "          hhhhhhhhh",
+  "          hhssssss",
+  "          hsssesse",
+  "          hSssssss",
+  "           SSssmss",
+  "            SSSSS",
+  "          cccccsscccc",
+  "       ssccccccccccc",
+  "      sssccccccccccc",
+  "      ss ccccccccccc",
+  "          cccccccccc",
+  "          cccccccccc",
+  "          cccccccccc",
+  "          CCCCCCCCCC",
+  "          pppppppppp",
+  "         ppppp  ppppp",
+  "        ppppp    ppppp",
+  "       ppppp      ppppp",
+  "       pppp        pppp",
+  "      bbbbb        bbbbb",
+  "     bbbbbb        bbbbbb",
+  "",
+  "    zzzzzzzzzzzzzzzzzzzzzzz",
+];
+const ART_ARMOUR = [
+  "", "", "", "", "", "", "", "", "", "", "", "",
+  "        1122222222211",
+  "       112222222222211",
+  "         12222222223",
+  "         12222222223",
+  "          1222222223",
+  "          1222222223",
+  "          2222222223",
+  "          3333333333",
+  "          2223  3222",
+];
+const ART_HELMET = [
+  "              xxx",
+  "             xx",
+  "            1112",
+  "          11122222",
+  "         1122222222",
+  "         2222222223",
+  "         33333333333",
+  "         33",
+  "         33",
+  "         33",
+  "          3",
+];
+const ART_SHIELD = [
+  "", "", "", "", "", "", "", "", "", "", "", "", "",
+  "    1112",
+  "   112222",
+  "  11222222",
+  "  122xx223",
+  "  12xxxx23",
+  "  12xxxx23",
+  "  122xx223",
+  "  12222223",
+  "   222223",
+  "    2333",
+];
+
+// Turn a pixel map into a list of [column, row, character]
+function artCells(map) {
+  const cells = [];
+  map.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch !== "." && ch !== " ") cells.push([x, y, ch]);
+  }));
+  return cells;
+}
+
+// The raised arm and the sword are diagonal, so their cells are built in a
+// loop instead. Rows can be negative (above the head): there's room up there.
+const ART_ARM = [];
+for (let i = 0; i <= 6; i++) {
+  const colour = i < 2 ? "c" : "s";   // sleeve first, then bare arm
+  ART_ARM.push([19 + i, 13 - i, colour], [20 + i, 13 - i, colour], [20 + i, 12 - i, colour]);
+}
+const ART_FIST = [[26, 5, "s"], [27, 5, "s"], [26, 6, "S"], [27, 6, "S"]];
+const ART_SWORD = [[28, 4, "G"]];                                          // grip
+ART_SWORD.push([27, 1, "3"], [28, 2, "2"], [29, 3, "2"], [30, 4, "2"], [31, 5, "3"]); // cross-guard
+for (let i = 0; i <= 6; i++) {                                             // blade
+  ART_SWORD.push([30 + i, 2 - i, "1"], [31 + i, 2 - i, i === 6 ? "3" : "2"]);
+}
+ART_SWORD.push([37, -5, "1"]);                                             // tip
+
+// Canvas size in art pixels, and where the maps' column 0 / row 0 sit on it
+const ART_WIDTH = 40;
+const ART_HEIGHT = 37;
+const ART_OFFSET_X = 1;
+const ART_OFFSET_Y = 7;
+
+// Paint one piece: first a dark outline around it, then its colours
+function paintArt(ctx, cells, shades) {
+  const filled = new Set(cells.map(([x, y]) => `${x},${y}`));
+  const dot = (x, y, colour) => {
+    ctx.fillStyle = colour;
+    ctx.fillRect(x + ART_OFFSET_X, y + ART_OFFSET_Y, 1, 1);
+  };
+  // Outline: every empty neighbour of a coloured cell (the ground shadow has none)
+  for (const [x, y, ch] of cells) {
+    if (ch === "z") continue;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      if (!filled.has(`${x + dx},${y + dy}`)) dot(x + dx, y + dy, ART_OUTLINE);
+    }
+  }
+  for (const [x, y, ch] of cells) {
+    dot(x, y, "123".includes(ch) ? shades[Number(ch) - 1] : ART_COLOURS[ch]);
+  }
+}
+
+// The gear worn on a given day, e.g. { sword: "Iron", shield: "Copper", ... }
+function gearOn(day) {
+  const stats = monthStats(day.slice(0, 7));
+  // Stat level 1 = Wooden ... level 7 or more = Obsidian
+  const material = (exp) => SWORDS[Math.min(statLevel(exp), SWORDS.length) - 1];
+  return {
+    sword: SWORDS[getLevel(day) - 1],
+    shield: material(stats.strength),
+    helmet: material(stats.mind),
+    armour: material(stats.constitution),
+  };
+}
+
+// e.g. "Iron sword · Copper shield · Silver helmet · Stone armour"
+function gearText(gear) {
+  return `${gear.sword} sword · ${gear.shield} shield · ${gear.helmet} helmet · ${gear.armour} armour`;
+}
+
+// Draw the adventurer wearing the given gear. Later pieces are drawn on top.
+function drawAdventurer(canvas, gear) {
+  canvas.width = ART_WIDTH;
+  canvas.height = ART_HEIGHT;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, ART_WIDTH, ART_HEIGHT);
+  paintArt(ctx, artCells(ART_BODY));
+  paintArt(ctx, ART_ARM);                       // behind the armour's shoulder
+  paintArt(ctx, artCells(ART_ARMOUR), MATERIALS[gear.armour]);
+  paintArt(ctx, artCells(ART_HELMET), MATERIALS[gear.helmet]);
+  paintArt(ctx, artCells(ART_SHIELD), MATERIALS[gear.shield]);
+  paintArt(ctx, ART_SWORD, MATERIALS[gear.sword]);
+  paintArt(ctx, ART_FIST);                      // the fist wraps around the grip
+}
+
 function renderLevel() {
   const today = todayString();
   renderStats(today);
@@ -474,7 +654,11 @@ function renderLevel() {
   const ascension = getAscension();
 
   levelLabel.textContent = `Level ${level}`;
-  swordName.textContent = `${SWORDS[level - 1]} sword`;
+  // Draw the adventurer, and name the gear for screen readers / on hover
+  const gear = gearOn(today);
+  drawAdventurer(adventurerArt, gear);
+  adventurerButton.title = gearText(gear);
+  adventurerButton.setAttribute("aria-label", `Open stats. ${gearText(gear)}`);
   ascensionLabel.textContent = `Ascension: ${ascension}`;
   // Today's date; redrawn with everything else, so it also changes at midnight
   todayDateLabel.textContent = formatDayLabel(todayString());
@@ -1801,6 +1985,8 @@ const statsTitle = document.getElementById("stats-title");
 const statsDetail = document.getElementById("stats-detail");
 const statsPrev = document.getElementById("stats-prev");
 const statsNext = document.getElementById("stats-next");
+const statsArt = document.getElementById("stats-art");
+const statsGear = document.getElementById("stats-gear");
 
 let statsYear = 0;
 let statsMonth = 0; // 0 = January, like JavaScript dates
@@ -1848,6 +2034,14 @@ function makeStatBlock(category, exp) {
 function renderStatsPopup() {
   statsTitle.textContent = formatMonthTitle(statsYear, statsMonth);
   const key = monthKey(statsYear, statsMonth);
+
+  // The adventurer at the end of that month (today, for the current month).
+  // "Day 0 of next month" is the last day of this month.
+  const today = todayString();
+  const lastDay = dateToString(new Date(statsYear, statsMonth + 1, 0));
+  const gear = gearOn(lastDay < today ? lastDay : today);
+  drawAdventurer(statsArt, gear);
+  statsGear.textContent = gearText(gear);
 
   statsDetail.innerHTML = "";
   for (const [category, exp] of Object.entries(monthStats(key))) {

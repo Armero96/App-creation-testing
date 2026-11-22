@@ -34,7 +34,7 @@ The app has **two main screens** (*(Version 3)* three, with the Notes screen). Y
 From top to bottom:
 1. **Ascension counter**: small, in the top-right corner.
    *(Version 3)* **Today's date** is shown at the top of the screen (e.g. "Sat 21 Nov").
-2. **The adventurer**: in version 1, this is a **placeholder showing the current sword** (see *Levels and gear*).
+2. **The adventurer**: in version 1, this was a **placeholder showing the current sword** (see *Levels and gear*). *(Version 4)* A **pixel-art adventurer** wearing its gear, with this month's **STR / MIND / CON** badges under the level. Tapping it opens the stats popup (see *Scope → Version 4*).
 3. **Day progress bar**: fills up with the exp earned today, out of today's total.
 4. **Carried-over tasks**: one-off tasks from earlier days that weren't completed, shown at the top of the list.
 5. **Today's tasks**: each one can be ticked as completed, which adds its exp to the day bar.
@@ -137,7 +137,7 @@ All data lives only in the phone's browser, so clearing site data or resetting t
 8. **Weekly reset:** every **Monday**, the level resets to 1. Repeating habits are kept, and **the ascension counter is never reset**.
 9. **Reset everything:** a button (for testing) that wipes all data: habits, level and ascension.
 
-### Levels and gear (version 1 placeholder)
+### Levels and gear
 
 | Level | Sword    | Reached by completing |
 |-------|----------|-----------------------|
@@ -196,8 +196,8 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
 3. **Notes screen**, to the left of the Main screen
 4. **Calendar view** of completed and missed days, plus a matching **date picker** for the quest form (both with Monday as the first day)
 
-**Version 4 (in progress):**
-1. **Quick fix:** switching screens closes the phone's keyboard (done)
+**Version 4 (done):**
+1. **Quick fix:** switching screens closes the phone's keyboard
 2. **Category stats:** exp from ticked quests builds up **STR** (Strength), **MIND** (Mind) and **CON** (Constitution).
    - Each stat starts every month at **Level 1**, and goes up 1 level per **100 exp** earned in that category that month (0–99 = level 1, 100–199 = level 2, ...). Stats **reset on the 1st of each month**.
    - Standing quests and quests without a category add nothing.
@@ -207,7 +207,7 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
 3. **Adventurer artwork:** a pixel-art adventurer in a **battle pose** (sword raised, shield forward), drawn in code, with a long sword arm reaching up and out (no animation). It wears four pieces of gear, each in the 7 materials of the sword table (Wooden → Obsidian):
    - **Sword** = this week's level (as now).
    - **Shield** = STR, **Helmet** = MIND, **Armour** = CON: this month's stat level (level 7 or more = Obsidian).
-   *(Drawing still being refined.)*
+   - The stats popup also shows the adventurer and its gear names for the month shown (for past months, as on that month's last day).
 
 **Later (don't build yet):**
 - Nothing right now.

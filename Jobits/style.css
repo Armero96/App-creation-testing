@@ -103,8 +103,7 @@ html, body {
 
 .adventurer {
   margin: 24px auto;
-  width: 160px;
-  height: 160px;
+  padding: 6px;                /* the box fits snugly around the drawing */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -123,6 +122,30 @@ button.adventurer {
   font: inherit;
   color: var(--text);
   cursor: pointer;
+}
+
+/* The drawing is 40 x 37 art pixels; shown 4x bigger. "pixelated" keeps
+   each art pixel a sharp square instead of blurring it. */
+.adventurer-art {
+  display: block;
+  width: 160px;
+  height: 148px;
+  image-rendering: pixelated;
+}
+
+/* In the stats popup it's 5x bigger, centred */
+.stats-art {
+  width: 200px;
+  height: 185px;
+  margin: 0 auto;
+}
+
+.stats-gear {
+  margin: 4px 0 16px;
+  text-align: center;
+  font-size: 8px;
+  line-height: 1.6;
+  color: var(--muted);
 }
 
 .level {

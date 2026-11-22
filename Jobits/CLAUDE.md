@@ -198,8 +198,16 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
 
 **Version 4 (in progress):**
 1. **Quick fix:** switching screens closes the phone's keyboard (done)
-2. **Category stats / a more developed ascension system:** e.g. exp earned per category builds up STR / MIND / CON stats for the adventurer *(details still to decide, see Open questions)*
-3. **Adventurer artwork**, with gear visible on the character *(details still to decide, see Open questions)*
+2. **Category stats:** exp from ticked quests builds up **STR** (Strength), **MIND** (Mind) and **CON** (Constitution).
+   - Each stat starts every month at **Level 1**, and goes up 1 level per **100 exp** earned in that category that month (0–99 = level 1, 100–199 = level 2, ...). Stats **reset on the 1st of each month**.
+   - Standing quests and quests without a category add nothing.
+   - Past months are worked out from the saved ticks using each quest's **current** exp and category (so editing a quest also changes its past months, and deleting a quest removes it from history). That's accepted for now.
+   - No game reward for stats yet.
+   - Shown as three small badges under the adventurer on the Main screen. **Tapping the adventurer** opens a zoomed-in popup with each stat's level, exp and progress to the next level, and **◀ ▶ arrows** to see previous months.
+3. **Adventurer artwork:** a pixel-art adventurer in a **battle pose** (sword raised, shield forward), drawn in code, with a long sword arm reaching up and out (no animation). It wears four pieces of gear, each in the 7 materials of the sword table (Wooden → Obsidian):
+   - **Sword** = this week's level (as now).
+   - **Shield** = STR, **Helmet** = MIND, **Armour** = CON: this month's stat level (level 7 or more = Obsidian).
+   *(Drawing still being refined.)*
 
 **Later (don't build yet):**
 - Nothing right now.

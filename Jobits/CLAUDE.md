@@ -27,7 +27,7 @@ I add habits and tasks, tick them off each day, and earn experience (exp). Compl
 
 ## Screens
 
-The app has **two main screens** (*(Version 3)* three, with the Notes screen). You switch between them by **swiping left/right** on a phone, or with the **left/right arrow keys** on a computer.
+The app has **two main screens** (*(Version 3)* three, with the Notes screen). You switch between them by **swiping left/right** on a phone, or with the **left/right arrow keys** on a computer. *(Version 4)* Switching screens closes the phone's keyboard if it's open.
 
 ### Screen 1 — Main screen (today)
 
@@ -196,9 +196,13 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
 3. **Notes screen**, to the left of the Main screen
 4. **Calendar view** of completed and missed days, plus a matching **date picker** for the quest form (both with Monday as the first day)
 
+**Version 4 (in progress):**
+1. **Quick fix:** switching screens closes the phone's keyboard (done)
+2. **Category stats / a more developed ascension system:** e.g. exp earned per category builds up STR / MIND / CON stats for the adventurer *(details still to decide, see Open questions)*
+3. **Adventurer artwork**, with gear visible on the character *(details still to decide, see Open questions)*
+
 **Later (don't build yet):**
-- **Category stats / a more developed ascension system:** e.g. exp earned per category builds up STR / MIND / CON stats for the adventurer
-- **Adventurer artwork**, with gear visible on the character
+- Nothing right now.
 
 **Out of scope:** user accounts, syncing between devices, notifications or reminders, an app store release, multiple users.
 

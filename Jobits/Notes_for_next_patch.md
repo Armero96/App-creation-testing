@@ -1,2 +1,1 @@
 # Notes for next patch
-1) When adding items to a check-list, and the keyboard shows-up, you can go left and right, and the keyboard stays up. I would rather either it blocks you from going left or right, or if you go right the keyboard automatically closes. 

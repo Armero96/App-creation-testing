@@ -1850,6 +1850,10 @@ function showScreen(index) {
   if (index < 0 || index >= SCREEN_COUNT) return;
   currentScreen = index;
 
+  // If the cursor is in a text box (e.g. "Add item" on a checklist), take it
+  // out, so the phone's keyboard closes instead of staying up on the new screen.
+  if (document.activeElement.matches("input, textarea")) document.activeElement.blur();
+
   // Slide the track. Each screen is a third of the track's width,
   // so screen 1 means moving the track a third of the way to the left.
   track.style.transform = `translateX(-${(index * 100) / SCREEN_COUNT}%)`;

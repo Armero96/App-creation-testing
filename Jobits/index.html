@@ -451,6 +451,24 @@
     </div>
   </div>
 
+  <!-- ===== Reward popup =====
+       Opens when a day is completed or a week is perfect: choose a reward
+       from the matching list. app.js fills in the title, text and choices. -->
+  <div class="modal" id="reward-modal" hidden>
+    <div class="habit-form reward-dialog" id="reward-dialog" role="dialog" aria-labelledby="reward-title">
+      <h2 id="reward-title"></h2>
+      <p class="reward-text" id="reward-text"></p>
+      <!-- One big button per reward in the list -->
+      <div class="reward-choices" id="reward-choices"></div>
+      <!-- Add a new reward to the list right here -->
+      <form class="check-add" id="reward-quick-add">
+        <input type="text" maxlength="40" autocomplete="off" placeholder="Add a new reward" aria-label="Add a new reward">
+        <button type="submit" aria-label="Add" disabled>+</button>
+      </form>
+      <button type="button" class="button-secondary calendar-close" id="reward-later">Choose later</button>
+    </div>
+  </div>
+
   <!-- ===== "Import backup" popup =====
        Shown after a backup file is picked: replace or merge? -->
   <div class="modal" id="import-modal" hidden>

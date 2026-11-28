@@ -441,10 +441,24 @@ function updateTodayRecord() {
   if (complete && !completedDays[today]) {
     completedDays[today] = true;
     saveCompletedDays();
+    // Rewards: one for the day, and one for the week if it's now perfect
+    earnReward("day", today);
+    if (isWeekPerfect(today)) earnReward("week", today);
   } else if (!complete && completedDays[today]) {
     delete completedDays[today];
     saveCompletedDays();
+    // Like the level-up, the rewards are undone (unless already used).
+    // If the week was perfect, it isn't any more.
+    unearnReward("day", today);
+    unearnReward("week", today);
   }
+}
+
+// Are all 7 days of this week (Monday to Sunday) completed?
+// Only possible on a Sunday, since days are only completed on the day itself.
+function isWeekPerfect(today) {
+  const monday = weekStart(today);
+  return Object.keys(completedDays).filter((day) => weekStart(day) === monday).length === 7;
 }
 
 
@@ -2113,6 +2127,16 @@ function makeRewardItem(entry) {
   name.textContent = entry.name || "Not chosen yet"; // textContent: plain text
   item.append(top, name);
 
+  // Not chosen yet ("Choose later" was tapped): a button to choose it now
+  if (!entry.used && !entry.name) {
+    const chooseButton = document.createElement("button");
+    chooseButton.type = "button";
+    chooseButton.className = "reward-use";
+    chooseButton.textContent = "Choose";
+    chooseButton.addEventListener("click", () => openRewardChooser(entry));
+    item.append(chooseButton);
+  }
+
   // "Use" (two taps): for when you actually enjoy the reward
   if (!entry.used && entry.name) {
     const useButton = document.createElement("button");
@@ -2207,6 +2231,137 @@ function setUpPoolForm(formId, getPool) {
 // (Functions, because Import or Reset can replace the "rewards" object)
 setUpPoolForm("daily-add", () => rewards.dailyList);
 setUpPoolForm("weekly-add", () => rewards.weeklyList);
+
+
+// ===== Earning daily and weekly rewards =====
+// Completing a day (or a perfect week) puts a "not chosen yet" reward into
+// the inventory, and opens the reward popup to choose it from the list.
+
+const rewardModal = document.getElementById("reward-modal");
+const rewardDialog = document.getElementById("reward-dialog");
+const rewardTitle = document.getElementById("reward-title");
+const rewardText = document.getElementById("reward-text");
+const rewardChoices = document.getElementById("reward-choices");
+
+let rewardQueue = [];       // ids of earned rewards waiting for their popup
+let choosingEntry = null;   // the inventory entry the popup is choosing for
+
+// What the popup says, and which list it chooses from, for each kind
+const REWARD_POPUPS = {
+  day: {
+    title: "Day complete!",
+    text: "Choose a reward from your daily list:",
+    pool: () => rewards.dailyList,
+  },
+  week: {
+    title: "Perfect week!",
+    text: "+1 ascension! Choose a reward from your weekly list:",
+    pool: () => rewards.weeklyList,
+  },
+};
+
+// Add a not-yet-chosen reward to the inventory and queue its popup
+function earnReward(kind, day) {
+  const entry = { id: makeId(), kind: kind, name: null, earned: day, used: null };
+  rewards.inventory.push(entry);
+  saveRewards();
+  rewardQueue.push(entry.id);
+  // Wait until the screen has finished redrawing before showing the popup
+  setTimeout(showNextReward, 0);
+}
+
+// Take back a reward that's no longer deserved (un-ticked), unless it was used
+function unearnReward(kind, day) {
+  const isUndone = (r) => r.kind === kind && r.earned === day && !r.used;
+  const undone = rewards.inventory.filter(isUndone);
+  if (undone.length === 0) return;
+  rewards.inventory = rewards.inventory.filter((r) => !isUndone(r));
+  saveRewards();
+  // Forget its popup too: still waiting, or open right now
+  const undoneIds = undone.map((r) => r.id);
+  rewardQueue = rewardQueue.filter((id) => !undoneIds.includes(id));
+  if (choosingEntry && undoneIds.includes(choosingEntry.id)) closeRewardChooser();
+}
+
+// Open the popup for the next reward in the queue (one at a time)
+function showNextReward() {
+  if (!rewardModal.hidden) return;   // one is already open
+  while (rewardQueue.length > 0) {
+    const entry = rewards.inventory.find((r) => r.id === rewardQueue[0]);
+    rewardQueue.shift();
+    if (entry && !entry.name && !entry.used) {
+      openRewardChooser(entry);
+      return;
+    }
+  }
+}
+
+// The big buttons, one per reward in the list
+function renderRewardChoices() {
+  const pool = REWARD_POPUPS[choosingEntry.kind].pool();
+  rewardChoices.innerHTML = "";
+  if (pool.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "placeholder";
+    empty.textContent = "This list is empty. Add a reward below!";
+    rewardChoices.append(empty);
+  }
+  for (const reward of pool) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "reward-choice";
+    button.textContent = reward.name;
+    button.addEventListener("click", () => {
+      choosingEntry.name = reward.name;   // the list itself stays the same
+      saveRewards();
+      closeRewardChooser();
+      renderRewards();
+    });
+    rewardChoices.append(button);
+  }
+}
+
+function openRewardChooser(entry) {
+  choosingEntry = entry;
+  const popup = REWARD_POPUPS[entry.kind];
+  rewardTitle.textContent = popup.title;
+  rewardText.textContent = popup.text;
+  // A perfect week gets a bigger, pinker popup
+  rewardDialog.classList.toggle("big", entry.kind === "week");
+  renderRewardChoices();
+  openPopup(rewardModal, closeRewardChooser);
+}
+
+// "Choose later" (or Back): the reward stays in the inventory, not chosen yet
+function closeRewardChooser() {
+  closePopup(rewardModal);
+  choosingEntry = null;
+  document.activeElement.blur();
+  renderRewards();
+  setTimeout(showNextReward, 0);   // e.g. the week's popup after the day's
+}
+
+document.getElementById("reward-later").addEventListener("click", closeRewardChooser);
+
+// "Add a new reward" inside the popup: adds it to the list being chosen from
+(() => {
+  const addForm = document.getElementById("reward-quick-add");
+  const input = addForm.querySelector("input");
+  const button = addForm.querySelector("button");
+  input.addEventListener("input", () => {
+    button.disabled = input.value.trim() === "";
+  });
+  addForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = input.value.trim();
+    if (name === "" || !choosingEntry) return;
+    REWARD_POPUPS[choosingEntry.kind].pool().push({ id: makeId(), name: name });
+    saveRewards();
+    input.value = "";
+    button.disabled = true;
+    renderRewardChoices();
+  });
+})();
 
 
 // ===== Month grid =====

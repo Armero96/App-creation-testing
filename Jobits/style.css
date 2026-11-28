@@ -1530,3 +1530,56 @@ h1, h2 {
 #show-used-row {
   margin-bottom: 12px;
 }
+
+/* ===== Reward popup ("Day complete!" / "Perfect week!") ===== */
+
+.reward-dialog {
+  border-color: var(--green);
+  text-align: center;
+}
+
+.reward-dialog h2 {
+  color: var(--green);
+  animation: pop 0.5s steps(4);   /* the same jumpy pop as "Level-up!" */
+}
+
+.reward-text {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* A perfect week: bigger title, pink frame */
+.reward-dialog.big {
+  border-color: var(--pink);
+}
+
+.reward-dialog.big h2 {
+  font-size: 20px;
+  color: var(--pink);
+}
+
+/* The rewards to choose from: one big button each, stacked */
+.reward-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0 12px;
+}
+
+.reward-choice {
+  min-height: 52px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--bg);
+  background: var(--accent);
+  border: 4px solid var(--text);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.reward-choices .placeholder {
+  margin: 0;
+  font-size: 10px;
+}

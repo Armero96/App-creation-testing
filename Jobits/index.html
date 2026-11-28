@@ -147,18 +147,22 @@
     </div>
   </main>
 
-  <!-- Screen indicator: one dot per screen, each with a small pixel icon.
-       Icons are drawn as tiny SVG squares ("pixels") on an 8x8 grid. -->
   <!-- Adds a new note. It lives outside the sliding track, so app.js
        shows it only while the Notes screen is on display. -->
   <button class="add-button" id="add-note-button" type="button" aria-label="Add note" hidden>+</button>
 
-  <nav class="indicator" aria-hidden="true">
-    <!-- Note page; app.js draws its pixel icon -->
-    <span class="dot" data-screen="0" title="Notes" id="notes-dot"></span>
-    <span class="dot" data-screen="1" title="Today">
+  <!-- Bottom bar: one tappable tab per screen, each with a small pixel icon and
+       a label. (Swiping and the arrow keys still work too.)
+       Icons are drawn as tiny SVG squares ("pixels") on an 8x8 grid. -->
+  <nav class="tab-bar" aria-label="Screens">
+    <button type="button" class="tab" data-screen="0">
+      <!-- Note page; app.js draws its pixel icon -->
+      <span class="tab-icon" id="notes-tab-icon"></span>
+      <span class="tab-label">Notes</span>
+    </button>
+    <button type="button" class="tab" data-screen="1">
       <!-- Sword: blade going up-right, crossguard, handle, pommel -->
-      <svg viewBox="0 0 8 8" shape-rendering="crispEdges">
+      <svg class="tab-icon" viewBox="0 0 8 8" shape-rendering="crispEdges">
         <rect x="7" y="0" width="1" height="1"/>
         <rect x="6" y="1" width="1" height="1"/>
         <rect x="5" y="2" width="1" height="1"/>
@@ -170,15 +174,17 @@
         <rect x="1" y="6" width="1" height="1"/>
         <rect x="0" y="7" width="1" height="1"/>
       </svg>
-    </span>
-    <span class="dot" data-screen="2" title="Quests">
+      <span class="tab-label">Today</span>
+    </button>
+    <button type="button" class="tab" data-screen="2">
       <!-- List: three bullet points with lines -->
-      <svg viewBox="0 0 8 8" shape-rendering="crispEdges">
+      <svg class="tab-icon" viewBox="0 0 8 8" shape-rendering="crispEdges">
         <rect x="0" y="1" width="1" height="1"/><rect x="2" y="1" width="6" height="1"/>
         <rect x="0" y="4" width="1" height="1"/><rect x="2" y="4" width="6" height="1"/>
         <rect x="0" y="7" width="1" height="1"/><rect x="2" y="7" width="6" height="1"/>
       </svg>
-    </span>
+      <span class="tab-label">Quests</span>
+    </button>
   </nav>
 
   <!-- ===== "New habit" popup =====

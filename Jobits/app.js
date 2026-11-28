@@ -1559,8 +1559,8 @@ const NOTE_ICONS = {
   ]),
 };
 
-// The Notes dot in the bottom indicator: a page with lines of text
-document.getElementById("notes-dot").innerHTML = pixelIcon([
+// The Notes tab in the bottom bar: a page with lines of text
+document.getElementById("notes-tab-icon").innerHTML = pixelIcon([
   "XXXXXX..",
   "X....XX.",
   "X.XX..X.",
@@ -2243,7 +2243,7 @@ document.getElementById("picker-today").addEventListener("click", () => {
 // Screen 0 = Notes, screen 1 = Main (today), screen 2 = Quests (habits).
 
 const track = document.getElementById("track");
-const dots = document.querySelectorAll(".dot");
+const tabs = document.querySelectorAll(".tab");
 const SCREEN_COUNT = 3;
 const MAIN_SCREEN = 1;
 
@@ -2263,12 +2263,23 @@ function showScreen(index) {
   // so screen 1 means moving the track a third of the way to the left.
   track.style.transform = `translateX(-${(index * 100) / SCREEN_COUNT}%)`;
 
-  // Highlight the matching dot in the indicator
-  dots.forEach((dot, i) => dot.classList.toggle("active", i === index));
+  // Highlight the matching tab in the bottom bar
+  tabs.forEach((tab, i) => {
+    tab.classList.toggle("active", i === index);
+    // tells screen readers which tab is the current screen
+    if (i === index) tab.setAttribute("aria-current", "page");
+    else tab.removeAttribute("aria-current");
+  });
 
   // The "add note" button only belongs on the Notes screen
   addNoteButton.hidden = index !== 0;
 }
+
+// ----- Bottom bar (phone and computer) -----
+// Tapping a tab goes straight to its screen
+tabs.forEach((tab) => {
+  tab.addEventListener("click", () => showScreen(Number(tab.dataset.screen)));
+});
 
 // ----- Keyboard (computer) -----
 document.addEventListener("keydown", (event) => {

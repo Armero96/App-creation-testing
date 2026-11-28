@@ -546,6 +546,15 @@ h1, h2 {
   accent-color: var(--green);
 }
 
+/* Small grey explanation under a choice, e.g. what a side quest is */
+.form-hint {
+  min-height: 3.2em;           /* room for two lines, so the form doesn't jump */
+  margin: 8px 0 0;
+  font-size: 8px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
 .form-error {
   min-height: 1.6em;           /* keeps the layout from jumping */
   margin: 16px 0 0;
@@ -671,16 +680,18 @@ h1, h2 {
   text-transform: uppercase;
 }
 
-/* Options without a category use the off-white text colour */
+/* Unselected options are plain grey, so they don't compete for attention.
+   Only the chosen option gets colour (see .selected below).
+   Options without a category use the off-white text colour when chosen. */
 .filter-option {
   --cat: var(--text);
   min-height: 40px;            /* still easy to tap */
   padding: 4px 10px;
   font-family: inherit;
   font-size: 10px;
-  color: var(--cat);
-  background: var(--panel);
-  border: 4px solid var(--cat);
+  color: var(--muted);
+  background: var(--bg);
+  border: 4px solid var(--muted);
   cursor: pointer;
 }
 
@@ -694,6 +705,7 @@ h1, h2 {
 .filter-option.selected {
   color: var(--bg);
   background: var(--cat);
+  border-color: var(--cat);
 }
 
 /* "Show completed": same look as the form's "Repeating" checkbox */
@@ -705,13 +717,62 @@ h1, h2 {
   cursor: pointer;
 }
 
+/* ===== Quests screen title and its ⋮ menu ===== */
+
+/* "Quests" on the left, the ⋮ button on the right */
+.screen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* A quiet button: no box, just the three dots */
+.menu-button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.menu-button svg {
+  width: 6px;                  /* 3 screen pixels per icon pixel */
+  height: 24px;
+  fill: currentColor;
+}
+
+.menu-dialog p {
+  font-size: 10px;
+}
+
+.menu-help {
+  color: var(--muted);
+}
+
+/* Small label that sets "Reset everything" apart from the rest */
+.menu-danger-label {
+  margin: 32px 0 6px;
+  color: var(--pink);
+  text-transform: uppercase;
+  font-size: 8px !important;
+}
+
+.menu-dialog .reset-button {
+  margin-top: 0;
+}
+
 /* ===== Backup: Export / Import ===== */
 
-/* The two buttons side by side, above "Reset everything" */
+/* The two buttons side by side, in the ⋮ menu */
 .backup-buttons {
   display: flex;
   gap: 12px;
-  margin-top: 32px;
+  margin-top: 16px;
 }
 
 .backup-buttons button {

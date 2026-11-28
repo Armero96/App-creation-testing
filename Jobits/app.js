@@ -880,7 +880,7 @@ function renderMainScreen() {
   const standingDueLeft = getStandingDueToday(today).filter((h) => !isDoneOnDay(h.id, today));
   const n = standingDueLeft.length;
   standingDueNote.hidden = n === 0;
-  standingDueNote.textContent = `${n} standing quest${n === 1 ? "" : "s"} due today`;
+  standingDueNote.textContent = `${n} side quest${n === 1 ? "" : "s"} due today`;
 
   // Progress bar: exp of ticked tasks out of the exp of all of today's tasks
   const { total, earned } = getTodayExp(today);
@@ -947,6 +947,7 @@ function matchesFilters(habit, today) {
   return true;
 }
 
+const filtersBox = document.getElementById("filters");
 const filterButtons = document.querySelectorAll(".filter-option");
 const showCompletedBox = document.getElementById("show-completed");
 
@@ -984,6 +985,7 @@ renderFilterControls(); // show the remembered filters at start-up
 function renderHabitList() {
   habitList.innerHTML = "";              // clear the old list
   habitsEmpty.hidden = habits.length > 0; // "No quests yet" only if empty
+  filtersBox.hidden = habits.length === 0; // nothing to filter yet
 
   const today = todayString();
   const shown = habits.filter((habit) => matchesFilters(habit, today));
@@ -1003,10 +1005,10 @@ function renderHabitList() {
     const details = document.createElement("p");
     details.className = "habit-details";
     if (habit.standing) {
-      // Standing quests have no exp or time of day, just an optional deadline
+      // Side quests have no exp or time of day, just an optional deadline
       details.textContent = habit.date
-        ? `Standing · by ${formatDate(habit.date)}`
-        : "Standing · no deadline";
+        ? `Side quest · by ${formatDate(habit.date)}`
+        : "Side quest · no deadline";
     } else {
       // Repeating habits show their repeat type; one-off tasks show their date
       const when = habit.repeat ? REPEAT_LABELS[habit.repeat] : formatDate(habit.date);
@@ -1069,6 +1071,24 @@ function deleteHabit(habitId) {
 }
 
 
+// ===== The ⋮ menu (Quests screen) =====
+// Holds the things you rarely need: Export, Import and Reset everything.
+
+const menuModal = document.getElementById("menu-modal");
+
+function openMenu() {
+  showBackupMessage("");   // forget the message from last time
+  openPopup(menuModal, closeMenu);
+}
+
+function closeMenu() {
+  closePopup(menuModal);
+}
+
+document.getElementById("menu-button").addEventListener("click", openMenu);
+document.getElementById("menu-close").addEventListener("click", closeMenu);
+
+
 // ===== Reset everything (for testing) =====
 
 const resetButton = document.getElementById("reset-button");
@@ -1092,6 +1112,7 @@ function resetEverything() {
   shownLevel = null;
   shownAscension = null;
   renderAll();
+  showBackupMessage("Everything was reset.");
 }
 
 
@@ -1284,20 +1305,58 @@ const nameInput = document.getElementById("habit-name");
 const expInput = document.getElementById("habit-exp");
 const dateInput = document.getElementById("habit-date");
 const timingSelect = document.getElementById("habit-timing");
-const standingCheckbox = document.getElementById("habit-standing");
 const expField = document.getElementById("exp-field");
 const dateLabel = document.getElementById("date-label");
 const noDeadlineButton = document.getElementById("no-deadline");
 const timingField = document.getElementById("timing-field");
-const repeatField = document.getElementById("repeat-field");
-const repeatingCheckbox = document.getElementById("habit-repeating");
 const repeatOptions = document.getElementById("repeat-options");
+const questTypeButtons = document.querySelectorAll(".quest-type-option");
+const questTypeHint = document.getElementById("quest-type-hint");
 const repeatSelect = document.getElementById("habit-repeat");
 const formError = document.getElementById("form-error");
 const categoryButtons = document.querySelectorAll(".category-option");
 
 // The category chosen in the form (null = none)
 let selectedCategory = null;
+
+// The type chosen in the form: "oneoff", "repeating" or "side".
+// (In the stored data, a side quest is a quest with standing: true.)
+let questType = "oneoff";
+
+// The line under the type buttons, explaining the choice
+const QUEST_TYPE_HINTS = {
+  oneoff: "Done once, on its date. If missed, it carries over to the next day.",
+  repeating: "Comes back on a schedule, e.g. every day.",
+  side: "No exp and no fixed day: do it whenever. It only blocks the day if it has a deadline and that day comes.",
+};
+
+// Choose a type in the form, and highlight only that button
+function selectQuestType(type) {
+  questType = type;
+  questTypeButtons.forEach((button) => {
+    const isChosen = button.dataset.type === type;
+    button.classList.toggle("selected", isChosen);
+    button.setAttribute("aria-pressed", isChosen);
+  });
+  updateFormFields();
+}
+
+// Tapping a type button. The date changes meaning between types:
+// side quests have an optional deadline, the others need a date.
+questTypeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const type = button.dataset.type;
+    const wasSide = questType === "side";
+    selectQuestType(type);
+    if (type === "side" && !wasSide && editingId === null) {
+      setFormDate("");                  // new side quest: no deadline to start with
+    } else if (type !== "side" && dateInput.value === "") {
+      setFormDate(todayString());       // other quests need a date: default today
+    } else {
+      setFormDate(dateInput.value);     // just update the button's wording
+    }
+  });
+});
 
 // Draw each sticker's pixel icon once, at start-up
 categoryButtons.forEach((button) => {
@@ -1341,16 +1400,16 @@ function openForm(habit = null) {
     editingId = habit.id;
     formTitle.textContent = "Edit quest";
     nameInput.value = habit.name;
-    standingCheckbox.checked = habit.standing === true;
+    selectQuestType(habit.standing ? "side" : habit.repeat ? "repeating" : "oneoff");
     expInput.value = habit.standing ? "" : habit.exp;
-    setFormDate(habit.date || "");       // standing quests may have no deadline
+    setFormDate(habit.date || "");       // side quests may have no deadline
     timingSelect.value = habit.timing;
-    repeatingCheckbox.checked = habit.repeat !== null;
     if (habit.repeat) repeatSelect.value = habit.repeat;
     selectCategory(habit.category || null); // older quests have no category
   } else {
     editingId = null;
     formTitle.textContent = "New quest";
+    selectQuestType("oneoff");        // default type
     setFormDate(todayString());       // default date: today
     selectCategory(null);
   }
@@ -1374,33 +1433,20 @@ document.getElementById("add-button").addEventListener("click", () => openForm()
 document.getElementById("first-quest-button").addEventListener("click", () => openForm());
 document.getElementById("cancel-button").addEventListener("click", closeForm);
 
-// Show or hide the repeat options when "Repeating" is ticked/unticked
-repeatingCheckbox.addEventListener("change", updateFormFields);
-
-// Show or hide form fields depending on the kind of quest
+// Show or hide form fields depending on the type of quest
 function updateFormFields() {
-  const standing = standingCheckbox.checked;
-  // Standing quests have no exp, time of day or repeat
-  expField.hidden = standing;
-  timingField.hidden = standing;
-  repeatField.hidden = standing;
+  const side = questType === "side";
+  // Side quests have no exp or time of day...
+  expField.hidden = side;
+  timingField.hidden = side;
   // ...and their date is an optional deadline
-  dateLabel.textContent = standing ? "Deadline (optional)" : "Date";
-  noDeadlineButton.hidden = !standing;
-  // Repeat options only if "Repeating" is ticked
-  repeatOptions.hidden = !repeatingCheckbox.checked;
+  noDeadlineButton.hidden = !side;
+  // Repeat options only for repeating quests (whose date is the start date)
+  repeatOptions.hidden = questType !== "repeating";
+  dateLabel.textContent = side ? "Deadline (optional)"
+    : questType === "repeating" ? "Start date" : "Date";
+  questTypeHint.textContent = QUEST_TYPE_HINTS[questType];
 }
-
-standingCheckbox.addEventListener("change", () => {
-  if (standingCheckbox.checked && editingId === null) {
-    setFormDate("");                       // new standing quest: no deadline to start with
-  } else if (!standingCheckbox.checked && dateInput.value === "") {
-    setFormDate(todayString());            // normal quests need a date: default today
-  } else {
-    setFormDate(dateInput.value);          // just update the button's wording
-  }
-  updateFormFields();
-});
 
 noDeadlineButton.addEventListener("click", () => setFormDate(""));
 
@@ -1418,8 +1464,8 @@ form.addEventListener("submit", (event) => {
     return;
   }
 
-  // Standing quest: only the name is required
-  if (standingCheckbox.checked) {
+  // Side quest (stored as "standing"): only the name is required
+  if (questType === "side") {
     saveQuest({
       name: name,
       exp: 0,               // standing quests give no exp
@@ -1446,7 +1492,7 @@ form.addEventListener("submit", (event) => {
     name: name,
     exp: exp,
     date: date,
-    repeat: repeatingCheckbox.checked ? repeatSelect.value : null, // null = one-off task
+    repeat: questType === "repeating" ? repeatSelect.value : null, // null = one-off task
     timing: timingSelect.value,
     category: selectedCategory, // null = no category
     standing: false,
@@ -1742,7 +1788,7 @@ const iconPicker = document.getElementById("icon-picker");
 const addNoteButton = document.getElementById("add-note-button");
 const noteKindField = document.getElementById("note-kind-field");
 const noteTextField = document.getElementById("note-text-field");
-const kindButtons = document.querySelectorAll(".kind-picker button");
+const kindButtons = document.querySelectorAll("#note-kind-field .kind-option");
 
 let editingNoteId = null;   // null = new note, otherwise the id being edited
 let selectedNoteIcon = null; // null = no icon
@@ -2182,8 +2228,8 @@ function setFormDate(dateString) {
   if (dateString) {
     dateButton.textContent = formatLongDate(dateString);
   } else {
-    // Standing quests may have no deadline; other quests need a date
-    dateButton.textContent = standingCheckbox.checked ? "No deadline" : "Pick a date";
+    // Side quests may have no deadline; other quests need a date
+    dateButton.textContent = questType === "side" ? "No deadline" : "Pick a date";
   }
   dateButton.classList.toggle("empty", !dateString);
 }

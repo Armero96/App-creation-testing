@@ -86,20 +86,33 @@
           <div id="today-slots"></div>
         </div>
 
-        <!-- Standing quests: "at some point" to-dos, no exp. Hidden when there are none. -->
+        <!-- Side quests ("standing" in the code): "at some point" to-dos, no exp.
+             Hidden when there are none. -->
         <div id="standing-section" hidden>
-          <h2>Standing quests</h2>
+          <h2>Side quests</h2>
           <ul class="task-list" id="standing-list"></ul>
         </div>
       </section>
 
       <!-- ===== Screen 2: Habits ===== -->
       <section class="screen" id="screen-habits" aria-label="Quests">
-        <h1>Quests</h1>
+        <!-- Title, with the ⋮ menu (backup and reset) on the right -->
+        <div class="screen-header">
+          <h1>Quests</h1>
+          <button type="button" class="menu-button" id="menu-button" aria-label="More options">
+            <!-- Three dots, one above the other -->
+            <svg viewBox="0 0 2 8" shape-rendering="crispEdges" aria-hidden="true">
+              <rect x="0" y="0" width="2" height="2"/>
+              <rect x="0" y="3" width="2" height="2"/>
+              <rect x="0" y="6" width="2" height="2"/>
+            </svg>
+          </button>
+        </div>
 
         <!-- Filters: one lit option per row; the two rows combine.
-             app.js reads data-group / data-value when a button is tapped. -->
-        <div class="filters">
+             app.js reads data-group / data-value when a button is tapped.
+             Hidden while there are no quests (nothing to filter yet). -->
+        <div class="filters" id="filters">
           <div class="filter-row" role="group" aria-labelledby="filter-category-label">
             <span class="filter-label" id="filter-category-label">Category</span>
             <button type="button" class="filter-option" data-group="category" data-value="all">All</button>
@@ -113,7 +126,7 @@
             <button type="button" class="filter-option" data-group="type" data-value="all">All</button>
             <button type="button" class="filter-option" data-group="type" data-value="oneoff">One-off</button>
             <button type="button" class="filter-option" data-group="type" data-value="repeating">Repeating</button>
-            <button type="button" class="filter-option" data-group="type" data-value="standing">Standing</button>
+            <button type="button" class="filter-option" data-group="type" data-value="standing">Side quest</button>
           </div>
           <label class="checkbox-row filter-checkbox">
             <input type="checkbox" id="show-completed">
@@ -128,18 +141,6 @@
         <!-- app.js fills this list with one <li> per saved habit -->
         <ul class="habit-list" id="habit-list"></ul>
 
-        <!-- Backup: Export saves all data to a file; Import loads one back -->
-        <div class="backup-buttons">
-          <button type="button" id="export-button">Export</button>
-          <button type="button" id="import-button">Import</button>
-        </div>
-        <!-- The real file picker is hidden; the Import button "clicks" it -->
-        <input type="file" id="import-file" accept=".json,application/json" hidden>
-        <!-- Short messages about export/import (e.g. "Backup loaded") -->
-        <p class="backup-message" id="backup-message"></p>
-
-        <!-- For testing: wipes all quests, ticks, level and ascension (two taps) -->
-        <button class="reset-button" id="reset-button" type="button">Reset everything</button>
         <!-- Opens the "new habit" form -->
         <button class="add-button" id="add-button" type="button" aria-label="Add quest">+</button>
       </section>
@@ -198,12 +199,16 @@
       <label for="habit-name">Name</label>
       <input type="text" id="habit-name" maxlength="40" autocomplete="off">
 
-      <!-- Standing quest: no exp, no time of day, no repeat, optional deadline.
-           Ticking it hides the fields that don't apply (see app.js). -->
-      <label class="checkbox-row">
-        <input type="checkbox" id="habit-standing">
-        Standing quest
-      </label>
+      <!-- The kind of quest: pick one of three. app.js hides the fields that
+           don't apply (e.g. side quests have no exp) and explains the choice. -->
+      <p class="form-label" id="quest-type-label">Type</p>
+      <div class="kind-picker" role="group" aria-labelledby="quest-type-label">
+        <button type="button" class="kind-option quest-type-option" data-type="oneoff">One-off</button>
+        <button type="button" class="kind-option quest-type-option" data-type="repeating">Repeating</button>
+        <button type="button" class="kind-option quest-type-option" data-type="side">Side quest</button>
+      </div>
+      <!-- One line explaining the chosen type -->
+      <p class="form-hint" id="quest-type-hint"></p>
 
       <div id="exp-field">
         <label for="habit-exp">Exp</label>
@@ -211,13 +216,26 @@
         <input type="number" id="habit-exp" min="1" step="1" inputmode="numeric">
       </div>
 
-      <!-- app.js changes this label to "Deadline (optional)" for standing quests -->
+      <!-- app.js changes this label to "Start date" for repeating quests,
+           and "Deadline (optional)" for side quests -->
       <!-- The date is kept in a hidden field ("YYYY-MM-DD" or empty).
            The button shows it, and opens Jobits' own date picker (weeks start on Monday). -->
       <label for="habit-date-button" id="date-label">Date</label>
       <input type="hidden" id="habit-date">
       <button type="button" class="date-button" id="habit-date-button"></button>
       <button type="button" class="small-button" id="no-deadline" hidden>No deadline</button>
+
+      <!-- Only shown for repeating quests -->
+      <div id="repeat-options" hidden>
+        <label for="habit-repeat">Repeat</label>
+        <select id="habit-repeat">
+          <option value="daily">Every day</option>
+          <option value="workdays">Every work day</option>
+          <option value="every2days">Every second day</option>
+          <option value="weekly">Every week</option>
+          <option value="monthly">Every month</option>
+        </select>
+      </div>
 
       <div id="timing-field">
         <label for="habit-timing">Time of day</label>
@@ -243,25 +261,6 @@
         <button type="button" class="category-option cat-constitution" data-category="constitution" aria-label="Constitution">
           <span class="category-icon"></span>CON
         </button>
-      </div>
-
-      <div id="repeat-field">
-        <label class="checkbox-row">
-          <input type="checkbox" id="habit-repeating">
-          Repeating
-        </label>
-
-        <!-- Only shown when "Repeating" is ticked -->
-        <div id="repeat-options" hidden>
-          <label for="habit-repeat">Repeat</label>
-          <select id="habit-repeat">
-            <option value="daily">Every day</option>
-            <option value="workdays">Every work day</option>
-            <option value="every2days">Every second day</option>
-            <option value="weekly">Every week</option>
-            <option value="monthly">Every month</option>
-          </select>
-        </div>
       </div>
 
       <!-- Validation messages appear here -->
@@ -373,6 +372,30 @@
         <button type="button" class="button-secondary" id="picker-cancel">Cancel</button>
         <button type="button" class="button-primary" id="picker-today">Today</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== ⋮ menu popup (Quests screen) =====
+       Things you rarely need: backups, and wiping everything. -->
+  <div class="modal" id="menu-modal" hidden>
+    <div class="habit-form menu-dialog" role="dialog" aria-labelledby="menu-title">
+      <h2 id="menu-title">Backup</h2>
+      <p class="menu-help">Export saves all your data to a file. Import loads one back, e.g. on a new phone.</p>
+      <div class="backup-buttons">
+        <button type="button" id="export-button">Export</button>
+        <button type="button" id="import-button">Import</button>
+      </div>
+      <!-- The real file picker is hidden; the Import button "clicks" it -->
+      <input type="file" id="import-file" accept=".json,application/json" hidden>
+      <!-- Short messages about export/import (e.g. "Backup loaded") -->
+      <p class="backup-message" id="backup-message"></p>
+
+      <!-- Kept apart from everything else, at the bottom.
+           Wipes all quests, ticks, notes, level and ascension (two taps). -->
+      <p class="menu-danger-label">Danger zone</p>
+      <button class="reset-button" id="reset-button" type="button">Reset everything</button>
+
+      <button type="button" class="button-secondary calendar-close" id="menu-close">Close</button>
     </div>
   </div>
 

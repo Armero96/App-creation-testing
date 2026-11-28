@@ -1583,3 +1583,105 @@ h1, h2 {
   margin: 0;
   font-size: 10px;
 }
+
+/* ===== The big goal ===== */
+
+/* On the Main screen: a button (it opens the Rewards screen) that looks like
+   a label, a thin yellow bar, and what the goal is for */
+.goal-bar {
+  display: block;
+  width: 100%;
+  margin: -8px 0 24px;
+  padding: 0;
+  text-align: left;
+  font-family: inherit;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.goal-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 10px;
+  color: var(--accent);
+}
+
+/* Thinner than the day's bar, and yellow instead of green */
+.goal-progress {
+  display: block;
+  height: 16px;
+}
+
+.goal-progress .progress-fill {
+  display: block;
+  background: var(--accent);
+}
+
+.goal-reward-text {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* On the Rewards screen */
+.goal-card {
+  margin-bottom: 24px;
+  padding: 12px;
+  background: var(--panel);
+  border: 4px solid var(--accent);
+}
+
+.goal-card .placeholder {
+  margin: 0 0 12px;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.goal-card-reward {
+  margin: 0 0 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.goal-card-details {
+  margin: 8px 0 0;
+  font-size: 8px;
+  color: var(--muted);
+}
+
+.goal-set-button,
+.goal-edit-button {
+  min-height: 44px;
+  padding: 4px 16px;
+  font-family: inherit;
+  font-size: 10px;
+  border: 4px solid var(--text);
+  cursor: pointer;
+}
+
+.goal-set-button {
+  width: 100%;
+  color: var(--bg);
+  background: var(--accent);
+}
+
+.goal-edit-button {
+  display: block;
+  min-width: 96px;
+  margin: 12px 0 0 auto;       /* pushed to the right */
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* "Goal reached!": the reward's name, big */
+.goal-reached-name {
+  margin: 12px 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}

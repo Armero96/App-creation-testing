@@ -178,6 +178,14 @@ const popupStack = [];          // the open popups, the top one last
 const popupClosers = new Map(); // popup element -> the function that closes it
 let handlingBack = false;       // true while Back is closing a popup
 let skipPops = 0;               // history entries we removed ourselves
+// history.back() takes a moment. If a popup opens in that moment (e.g. the
+// next reward popup right after one closes), adding its history entry right
+// away would get mixed up with the step back. So it's added afterwards.
+let pushesOwed = 0;
+
+function addHistoryEntry() {
+  history.pushState({ jobitsPopup: true }, "");
+}
 
 // Show a popup. closeFn is its normal close function (which calls closePopup).
 function openPopup(element, closeFn) {
@@ -185,7 +193,8 @@ function openPopup(element, closeFn) {
   element.hidden = false;
   popupStack.push(element);
   popupClosers.set(element, closeFn);
-  history.pushState({ jobitsPopup: true }, "");
+  if (skipPops > 0) pushesOwed++;   // a step back is still on its way: wait for it
+  else addHistoryEntry();
 }
 
 // Hide a popup, and remove its history entry unless Back already did
@@ -194,7 +203,10 @@ function closePopup(element) {
   const index = popupStack.indexOf(element);
   if (index === -1) return;     // it wasn't open
   popupStack.splice(index, 1);
-  if (!handlingBack) {
+  if (handlingBack) return;
+  if (pushesOwed > 0) {
+    pushesOwed--;               // its entry was never added: nothing to remove
+  } else {
     skipPops++;                 // the "popstate" this causes isn't a Back press
     history.back();
   }
@@ -214,6 +226,10 @@ function closeTopPopup() {
 window.addEventListener("popstate", () => {
   if (skipPops > 0) {           // caused by closePopup's history.back(): ignore
     skipPops--;
+    // All our steps back are done: now add the entries of popups opened meanwhile
+    if (skipPops === 0) {
+      for (; pushesOwed > 0; pushesOwed--) addHistoryEntry();
+    }
     return;
   }
   handlingBack = true;
@@ -1032,6 +1048,7 @@ document.getElementById("visit-dismiss").addEventListener("click", () => {
 // Redraw both screens (after any change to habits or ticks)
 function renderAll() {
   updateTodayRecord();  // first: is today complete now? (this sets the level)
+  checkGoal();          // ...and has the big goal been reached?
   renderLevel();
   renderVisitCard();
   renderMainScreen();
@@ -2203,6 +2220,7 @@ function renderRewards() {
 
   renderPool(document.getElementById("daily-pool"), rewards.dailyList);
   renderPool(document.getElementById("weekly-pool"), rewards.weeklyList);
+  renderGoal();
 }
 
 showUsedBox.addEventListener("change", renderRewards);
@@ -2285,10 +2303,14 @@ function unearnReward(kind, day) {
 
 // Open the popup for the next reward in the queue (one at a time)
 function showNextReward() {
-  if (!rewardModal.hidden) return;   // one is already open
+  if (!rewardModal.hidden || !goalReachedModal.hidden) return;   // one is already open
   while (rewardQueue.length > 0) {
     const entry = rewards.inventory.find((r) => r.id === rewardQueue[0]);
     rewardQueue.shift();
+    if (entry && entry.kind === "goal") {
+      openGoalReached(entry);           // goal rewards are fixed: nothing to choose
+      return;
+    }
     if (entry && !entry.name && !entry.used) {
       openRewardChooser(entry);
       return;
@@ -2342,6 +2364,204 @@ function closeRewardChooser() {
 }
 
 document.getElementById("reward-later").addEventListener("click", closeRewardChooser);
+
+// ===== The big goal =====
+// One goal at a time: a target exp and a reward. Exp from all quests
+// ticked from the day the goal was set counts towards it (using each
+// quest's current exp, like the stats). Once reached, its reward is final.
+
+const goalBar = document.getElementById("goal-bar");
+const goalLabel = document.getElementById("goal-label");
+const goalFill = document.getElementById("goal-fill");
+const goalRewardText = document.getElementById("goal-reward-text");
+const goalCard = document.getElementById("goal-card");
+const goalModal = document.getElementById("goal-modal");
+const goalForm = document.getElementById("goal-form");
+const goalFormTitle = document.getElementById("goal-form-title");
+const goalTargetInput = document.getElementById("goal-target");
+const goalRewardInput = document.getElementById("goal-reward");
+const goalFormHint = document.getElementById("goal-form-hint");
+const goalFormError = document.getElementById("goal-form-error");
+const goalSaveButton = document.getElementById("goal-save");
+const goalDeleteButton = document.getElementById("goal-delete");
+const goalReachedModal = document.getElementById("goal-reached-modal");
+
+let editingGoal = false;     // is the form editing the current goal (or making a new one)?
+let lastGoalTarget = null;   // the target of the goal just reached, to pre-fill the next
+
+// Exp earned towards a goal so far
+function goalExp(goal) {
+  const byId = new Map(habits.map((h) => [h.id, h]));
+  let total = 0;
+  for (const [day, ids] of Object.entries(completions)) {
+    if (day < goal.start) continue;          // ticked before the goal was set
+    for (const id of ids) {
+      const habit = byId.get(id);
+      if (habit && !habit.standing) total += habit.exp; // side quests give no exp
+    }
+  }
+  return total;
+}
+
+// Reached? Then the reward goes into the inventory and the goal is done.
+function checkGoal() {
+  const goal = rewards.goal;
+  if (!goal || goalExp(goal) < goal.target) return;
+  const entry = { id: makeId(), kind: "goal", name: goal.reward, earned: todayString(), used: null };
+  rewards.inventory.push(entry);
+  lastGoalTarget = goal.target;
+  rewards.goal = null;
+  saveRewards();
+  rewardQueue.push(entry.id);
+  setTimeout(showNextReward, 0);   // the "Goal reached!" popup
+}
+
+// e.g. "Goal: 340 / 1000 exp"
+function goalProgressText(goal) {
+  return `${Math.min(goalExp(goal), goal.target)} / ${goal.target} exp`;
+}
+
+function goalPercent(goal) {
+  return `${Math.min(goalExp(goal) / goal.target, 1) * 100}%`;
+}
+
+// The goal bar on the Main screen, and the goal card on the Rewards screen
+function renderGoal() {
+  const goal = rewards.goal;
+
+  goalBar.hidden = !goal;
+  if (goal) {
+    goalLabel.textContent = `Goal: ${goalProgressText(goal)}`;
+    goalFill.style.width = goalPercent(goal);
+    goalRewardText.textContent = `→ ${goal.reward}`;  // what it's for
+  }
+
+  goalCard.innerHTML = "";
+  if (!goal) {
+    const none = document.createElement("p");
+    none.className = "placeholder";
+    none.textContent = "No goal yet. Set an exp target and a bigger reward to work towards.";
+    const setButton = document.createElement("button");
+    setButton.type = "button";
+    setButton.className = "goal-set-button";
+    setButton.textContent = "Set a goal";
+    setButton.addEventListener("click", () => openGoalForm());
+    goalCard.append(none, setButton);
+    return;
+  }
+  const name = document.createElement("p");
+  name.className = "goal-card-reward";
+  name.textContent = goal.reward;
+  const bar = document.createElement("div");
+  bar.className = "progress goal-progress";
+  const fill = document.createElement("div");
+  fill.className = "progress-fill";
+  fill.style.width = goalPercent(goal);
+  bar.append(fill);
+  const details = document.createElement("p");
+  details.className = "goal-card-details";
+  details.textContent = `${goalProgressText(goal)} · since ${formatDate(goal.start)}`;
+  const editButton = document.createElement("button");
+  editButton.type = "button";
+  editButton.className = "goal-edit-button";
+  editButton.textContent = "Edit";
+  editButton.addEventListener("click", () => openGoalForm(true));
+  goalCard.append(name, bar, details, editButton);
+}
+
+// Tapping the goal bar on the Main screen opens the Rewards screen
+goalBar.addEventListener("click", () => showScreen(REWARDS_SCREEN));
+
+// ----- The goal form -----
+
+// Save stays greyed out until both fields are filled in
+function updateGoalSaveButton() {
+  goalSaveButton.disabled = goalTargetInput.value === "" || goalRewardInput.value.trim() === "";
+}
+goalTargetInput.addEventListener("input", updateGoalSaveButton);
+goalRewardInput.addEventListener("input", updateGoalSaveButton);
+
+// edit = true: change the current goal; otherwise a new one
+// (pre-filled with targetSuggestion, e.g. the last goal's target)
+function openGoalForm(edit = false, targetSuggestion = null) {
+  goalForm.reset();
+  goalFormError.textContent = "";
+  editingGoal = edit && rewards.goal !== null;
+  if (editingGoal) {
+    goalFormTitle.textContent = "Edit goal";
+    goalTargetInput.value = rewards.goal.target;
+    goalRewardInput.value = rewards.goal.reward;
+    goalFormHint.textContent = `Exp counts from ${formatDate(rewards.goal.start)}, when the goal was set.`;
+  } else {
+    goalFormTitle.textContent = "New goal";
+    if (targetSuggestion) goalTargetInput.value = targetSuggestion;
+    goalFormHint.textContent = "Exp from all quests ticked from today on counts towards it.";
+  }
+  goalDeleteButton.hidden = !editingGoal;
+  updateGoalSaveButton();
+  openPopup(goalModal, closeGoalForm);
+}
+
+function closeGoalForm() {
+  closePopup(goalModal);
+  document.activeElement.blur();
+}
+
+document.getElementById("goal-cancel").addEventListener("click", closeGoalForm);
+
+goalForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const target = Number(goalTargetInput.value);
+  const reward = goalRewardInput.value.trim();
+  if (!Number.isInteger(target) || target < 1) {
+    goalFormError.textContent = "Target must be a whole number of 1 or more.";
+    return;
+  }
+  if (reward === "") {
+    goalFormError.textContent = "Please enter a reward.";
+    return;
+  }
+  if (editingGoal) {
+    // Keep the start date, so exp earned so far still counts
+    rewards.goal.target = target;
+    rewards.goal.reward = reward;
+  } else {
+    rewards.goal = { target: target, reward: reward, start: todayString() };
+  }
+  saveRewards();
+  closeGoalForm();
+  renderAll();   // the goal might already be reached
+});
+
+// Remove the goal (two taps); earned rewards stay in the inventory
+goalDeleteButton.addEventListener("click", () =>
+  confirmTwice(goalDeleteButton, "Remove goal", "Sure? Tap again", () => {
+    rewards.goal = null;
+    saveRewards();
+    closeGoalForm();
+    renderAll();
+  })
+);
+
+// ----- "Goal reached!" popup -----
+
+function openGoalReached(entry) {
+  document.getElementById("goal-reached-name").textContent = entry.name;
+  openPopup(goalReachedModal, closeGoalReached);
+}
+
+function closeGoalReached() {
+  closePopup(goalReachedModal);
+  setTimeout(showNextReward, 0);   // anything else waiting?
+}
+
+document.getElementById("goal-reached-later").addEventListener("click", closeGoalReached);
+// "Set the next goal": the form opens, pre-filled with the same target
+document.getElementById("goal-next").addEventListener("click", () => {
+  closeGoalReached();
+  openGoalForm(false, lastGoalTarget);
+});
+
 
 // "Add a new reward" inside the popup: adds it to the list being chosen from
 (() => {

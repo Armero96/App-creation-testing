@@ -13,6 +13,8 @@ const COMPLETIONS_KEY = "jobits.completions";
 const COMPLETED_DAYS_KEY = "jobits.completedDays";
 const FILTERS_KEY = "jobits.filters";   // the Quests screen's last chosen filters
 const NOTES_KEY = "jobits.notes";
+const LAST_VISIT_KEY = "jobits.lastVisit";     // the last day the app was open
+const VISIT_REPORT_KEY = "jobits.visitReport"; // what the "Since your last visit" card covers
 
 // Read something from localStorage; if it's missing or broken, use the fallback
 function loadFromStorage(key, fallback) {
@@ -894,10 +896,102 @@ function renderMainScreen() {
   }
 }
 
+// ===== "Since your last visit" card =====
+// When the app is opened on a new day, it remembers which days it hasn't
+// seen yet (from the last visit up to yesterday). The card on the Main
+// screen lists the missed ones among them, with what was left undone,
+// until it's dismissed with ✕. The next new day starts a fresh report.
+
+const visitCard = document.getElementById("visit-card");
+const visitTitle = document.getElementById("visit-title");
+const visitList = document.getElementById("visit-list");
+const VISIT_MAX_DAYS = 7; // list at most this many days, then "and N more"
+
+// Run at start-up and whenever the date changes
+function updateVisit() {
+  const today = todayString();
+  const lastVisit = loadFromStorage(LAST_VISIT_KEY, null);
+  if (lastVisit && lastVisit < today) {
+    // A new day: report on the days from the last visit up to yesterday
+    localStorage.setItem(VISIT_REPORT_KEY, JSON.stringify({ day: today, from: lastVisit }));
+  }
+  localStorage.setItem(LAST_VISIT_KEY, JSON.stringify(today));
+}
+
+// Was this quest ticked on this day or any earlier day?
+function isDoneByDay(habitId, dateString) {
+  return Object.keys(completions).some(
+    (day) => day <= dateString && completions[day].includes(habitId)
+  );
+}
+
+// The quests that made a day fail: the ones that counted that day
+// but weren't ticked by the end of it.
+function undoneQuestsOn(day) {
+  return habits.filter((h) => {
+    // Side quest: only counted on its deadline day
+    if (h.standing) return h.date === day && !isDoneByDay(h.id, day);
+    // Repeating: due that day and not ticked that day
+    if (h.repeat) return isDueOn(h, day) && !isDoneOnDay(h.id, day);
+    // One-off: due that day or carried over from earlier, and not done yet
+    return h.date <= day && !isDoneByDay(h.id, day);
+  });
+}
+
+// The missed days from "from" up to yesterday, most recent first
+function missedDaysSince(from, today) {
+  const missed = [];
+  const date = parseDate(from);
+  for (let day = from; day < today; day = dateToString(date)) {
+    if (dayStatus(day, today) === "missed") missed.unshift(day); // unshift = add at the front
+    date.setDate(date.getDate() + 1); // next day
+  }
+  return missed;
+}
+
+function renderVisitCard() {
+  const today = todayString();
+  const report = loadFromStorage(VISIT_REPORT_KEY, null);
+  const missed = report && report.day === today ? missedDaysSince(report.from, today) : [];
+
+  visitCard.hidden = missed.length === 0;   // nothing missed: no card
+  if (missed.length === 0) return;
+
+  const n = missed.length;
+  visitTitle.textContent = `Since your last visit: ${n} day${n === 1 ? "" : "s"} missed`;
+  visitList.innerHTML = "";
+  for (const day of missed.slice(0, VISIT_MAX_DAYS)) {
+    const item = document.createElement("li");
+    const date = document.createElement("span");
+    date.className = "visit-day";
+    date.textContent = formatDayLabel(day);
+    const names = undoneQuestsOn(day).map((h) => h.name);
+    // textContent: quest names are shown as plain text
+    const text = names.length > 0 ? `missed: ${names.join(", ")}` : "no quests were planned";
+    item.append(date, ` — ${text}`);
+    visitList.append(item);
+  }
+  if (n > VISIT_MAX_DAYS) {
+    const more = document.createElement("li");
+    more.className = "visit-more";
+    const rest = n - VISIT_MAX_DAYS;
+    more.textContent = `and ${rest} more day${rest === 1 ? "" : "s"}`;
+    visitList.append(more);
+  }
+}
+
+// ✕: forget today's report, so the card stays away until the next new day
+document.getElementById("visit-dismiss").addEventListener("click", () => {
+  localStorage.removeItem(VISIT_REPORT_KEY);
+  renderVisitCard();
+});
+
+
 // Redraw both screens (after any change to habits or ticks)
 function renderAll() {
   updateTodayRecord();  // first: is today complete now? (this sets the level)
   renderLevel();
+  renderVisitCard();
   renderMainScreen();
   renderHabitList();
   renderNotes();
@@ -1103,6 +1197,7 @@ function resetEverything() {
   localStorage.removeItem(COMPLETIONS_KEY);
   localStorage.removeItem(COMPLETED_DAYS_KEY);
   localStorage.removeItem(NOTES_KEY);
+  localStorage.removeItem(VISIT_REPORT_KEY);
   // ...and the copies in memory
   habits = [];
   completions = {};
@@ -2387,6 +2482,7 @@ function checkForNewDay() {
   // A new day: don't treat the level change as a level-up message
   shownLevel = null;
   shownAscension = null;
+  updateVisit();   // e.g. open over midnight: yesterday may have been missed
   renderAll();
 }
 
@@ -2398,6 +2494,7 @@ document.addEventListener("visibilitychange", () => {
 
 // ===== Start-up =====
 showScreen(MAIN_SCREEN); // start on the Main screen
+updateVisit();      // a new day since the last visit? (for the "Since your last visit" card)
 renderAll();        // draw all screens from the saved data
 
 // Register the service worker (sw.js), which makes the app work offline

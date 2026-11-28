@@ -44,6 +44,16 @@
           <div class="ascension" id="ascension-label">Ascension: 0</div>
         </div>
 
+        <!-- "Since your last visit": shown on a new day if days were missed
+             since the app was last opened. app.js fills in the list. -->
+        <div class="visit-card" id="visit-card" hidden>
+          <div class="visit-card-header">
+            <h2 id="visit-title">Since your last visit</h2>
+            <button type="button" class="visit-dismiss" id="visit-dismiss" aria-label="Dismiss">✕</button>
+          </div>
+          <ul class="visit-list" id="visit-list"></ul>
+        </div>
+
         <!-- Placeholder for the adventurer: just shows the current sword -->
         <!-- Tapping the adventurer opens the stats popup -->
         <button type="button" class="adventurer" id="adventurer" aria-label="Open stats">

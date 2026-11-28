@@ -11,7 +11,7 @@ How I like to work (plan first, small steps, etc.) is in the **top-level `CLAUDE
 **Jobits** ("Jorge's habits") is a **gamified habit tracker**, built as a **PWA** (Progressive Web App) for my phone.
 I add habits and tasks, tick them off each day, and earn experience (exp). Completing all of a day's tasks levels up an adventurer, who gets better gear through the week.
 
-**Naming:** in the app's visible text, habits and tasks are called **quests** (e.g. "Quests", "New quest", "Today's quests"). The code and stored data keep the word "habit".
+**Naming:** in the app's visible text, habits and tasks are called **quests** (e.g. "Quests", "New quest", "Today's quests"). The code and stored data keep the word "habit". Likewise, *(Version 5)* **standing quests are called "side quests"** in visible text, while the code and stored data keep "standing".
 
 ## Tech stack
 
@@ -212,7 +212,7 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
    - **Shield** = STR, **Helmet** = MIND, **Armour** = CON: this month's stat level (level 7 or more = Obsidian).
    - The stats popup also shows the adventurer and its gear names for the month shown (for past months, as on that month's last day).
 
-**Version 5 (planned; build one step at a time):**
+**Version 5 (done):**
 1. **Quick fixes:**
    - The **"Add item"** button on checklist notes is **greyed out** while its field is empty (same for the quest form's Save button while the name is empty).
    - The phone's **Back button closes any open popup** (quest form, note form, calendar, stats, import, date picker) instead of leaving the page.
@@ -224,7 +224,7 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
    - The filters (and "Show completed") are **hidden when there are no quests**.
    - **Standing quests are renamed "Side quests"** in all visible text (the code and stored data can keep "standing").
    - In the quest form, the "Repeating" and "Standing" checkboxes become **one three-way choice: One-off · Repeating · Side quest**.
-4. **"Since your last visit" card:** when the app is opened on a new day, a card at the top of the Main screen lists **every day since the last visit** that was missed, with the quests left undone on each (e.g. "Thu 26 Nov — missed: Gym, Read"). If many days were missed, the first 7 are listed, followed by "and N more days". A ✕ dismisses it until the next new day. If nothing was missed, no card is shown.
+4. **"Since your last visit" card:** when the app is opened on a new day, a card at the top of the Main screen lists **every day since the last visit** that was missed, with the quests left undone on each (e.g. "Thu 26 Nov — missed: Gym, Read"). The most recent day comes first. If many days were missed, the 7 most recent are listed, followed by "and N more days". Days before the first tick ever count as "not tracked", as in the calendar, so they're not listed. A ✕ dismisses it until the next new day. If nothing was missed, no card is shown.
 
 **Later (don't build yet):**
 - **Version 6 — Rewards:** real-life rewards: a small one for each completed day, and a bigger one for reaching an exp goal. See *Open questions*.

@@ -1685,3 +1685,27 @@ h1, h2 {
   color: var(--accent);
   overflow-wrap: anywhere;
 }
+
+/* ===== Reward reminders (Main screen) ===== */
+
+/* Quiet dashed boxes: noticeable, but less loud than the quests */
+.reminder {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin: -8px 0 24px;
+  padding: 8px 12px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--accent);
+  background: none;
+  border: 4px dashed var(--muted);
+  cursor: pointer;
+}
+
+/* When both show, the second sits closer to the first */
+.reminder:not([hidden]) + .reminder {
+  margin-top: -16px;
+}

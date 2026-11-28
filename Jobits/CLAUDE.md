@@ -223,7 +223,7 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
    - In the quest form, the "Repeating" and "Standing" checkboxes become **one three-way choice: One-off · Repeating · Side quest**.
 4. **"Since your last visit" card:** when the app is opened on a new day, a card at the top of the Main screen lists **every day since the last visit** that was missed, with the quests left undone on each (e.g. "Thu 26 Nov — missed: Gym, Read"). The most recent day comes first. If many days were missed, the 7 most recent are listed, followed by "and N more days". Days before the first tick ever count as "not tracked", as in the calendar, so they're not listed. A ✕ dismisses it until the next new day. If nothing was missed, no card is shown.
 
-**Version 6 (planned; build one step at a time): Rewards**
+**Version 6 (done): Rewards**
 
 Real-life rewards that I define myself, earned by playing. There are three kinds:
 
@@ -233,7 +233,7 @@ Real-life rewards that I define myself, earned by playing. There are three kinds
 | **Weekly reward** | a perfect week (+1 ascension) | I pick one from my **weekly reward list** |
 | **Goal reward** | reaching my exp goal | fixed: the goal's own reward |
 
-1. **Rewards screen:** a fourth screen, **to the right of Quests**, with its own tab (**Rewards**) in the bottom bar. The app still opens on the Main screen. From top to bottom:
+1. **Rewards screen:** a fourth screen, **to the right of Quests**, with its own tab (**Rewards**, a treasure chest icon) in the bottom bar. The app still opens on the Main screen. From top to bottom:
    - **Inventory:** the rewards I've earned and not used yet, newest first. Each shows its name, its kind (small label: Day / Week / Goal) and the date it was earned, and has a **"Use"** button for when I actually enjoy it. Used rewards move to a **"Used"** list, hidden behind a "Show used" toggle (a small history).
    - **Goal:** the current goal (see step 3), with Edit, or a "Set a goal" button if there is none.
    - **Daily reward list** and **weekly reward list:** short lists of reward names I can add to and delete from (e.g. "An episode of a series", "A nice coffee"). Choosing a reward **doesn't remove it** from the list; it can be chosen again another day.

@@ -2430,6 +2430,13 @@ function renderGoal() {
   const goal = rewards.goal;
 
   goalBar.hidden = !goal;
+
+  // Reminders on the Main screen, nudging you to set up rewards. Not while
+  // there are no quests at all: then "Add your first quest" comes first.
+  const hasQuests = habits.length > 0;
+  goalReminder.hidden = !hasQuests || goal !== null;
+  dailyReminder.hidden = !hasQuests || rewards.dailyList.length > 0;
+
   if (goal) {
     goalLabel.textContent = `Goal: ${goalProgressText(goal)}`;
     goalFill.style.width = goalPercent(goal);
@@ -2469,8 +2476,12 @@ function renderGoal() {
   goalCard.append(name, bar, details, editButton);
 }
 
-// Tapping the goal bar on the Main screen opens the Rewards screen
-goalBar.addEventListener("click", () => showScreen(REWARDS_SCREEN));
+// Tapping the goal bar or a reminder on the Main screen opens the Rewards screen
+const goalReminder = document.getElementById("goal-reminder");
+const dailyReminder = document.getElementById("daily-reminder");
+for (const button of [goalBar, goalReminder, dailyReminder]) {
+  button.addEventListener("click", () => showScreen(REWARDS_SCREEN));
+}
 
 // ----- The goal form -----
 

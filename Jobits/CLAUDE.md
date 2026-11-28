@@ -27,7 +27,7 @@ I add habits and tasks, tick them off each day, and earn experience (exp). Compl
 
 ## Screens
 
-The app has **two main screens** (*(Version 3)* three, with the Notes screen). You switch between them by **swiping left/right** on a phone, or with the **left/right arrow keys** on a computer. *(Version 4)* Switching screens closes the phone's keyboard if it's open.
+The app has **two main screens** (*(Version 3)* three, with the Notes screen; *(Version 6)* four, with the Rewards screen). You switch between them by **swiping left/right** on a phone, or with the **left/right arrow keys** on a computer. *(Version 4)* Switching screens closes the phone's keyboard if it's open.
 
 ### Screen 1 — Main screen (today)
 
@@ -170,10 +170,7 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
 
 ## Open questions (ask me before building these parts)
 
-- **Rewards (planned for Version 6):** real-life rewards that I define myself. Details still to decide:
-  - **Daily reward:** one fixed reward I write (e.g. "an episode of a series"), or a list the app picks from at random?
-  - **Big goal:** I set a target exp (e.g. 1000) and a bigger reward. Does exp count from the moment the goal is set? When it's reached, do I set a new goal straight away?
-  - What does the **reward screen** look like (a popup when the day is completed / the goal is reached, a list of earned rewards, ...)?
+- None right now. Add new ones here as they come up.
 
 ---
 
@@ -226,8 +223,35 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
    - In the quest form, the "Repeating" and "Standing" checkboxes become **one three-way choice: One-off · Repeating · Side quest**.
 4. **"Since your last visit" card:** when the app is opened on a new day, a card at the top of the Main screen lists **every day since the last visit** that was missed, with the quests left undone on each (e.g. "Thu 26 Nov — missed: Gym, Read"). The most recent day comes first. If many days were missed, the 7 most recent are listed, followed by "and N more days". Days before the first tick ever count as "not tracked", as in the calendar, so they're not listed. A ✕ dismisses it until the next new day. If nothing was missed, no card is shown.
 
+**Version 6 (planned; build one step at a time): Rewards**
+
+Real-life rewards that I define myself, earned by playing. There are three kinds:
+
+| Kind | Earned by | Chosen how |
+|------|-----------|------------|
+| **Daily reward** | completing a day | I pick one from my **daily reward list** |
+| **Weekly reward** | a perfect week (+1 ascension) | I pick one from my **weekly reward list** |
+| **Goal reward** | reaching my exp goal | fixed: the goal's own reward |
+
+1. **Rewards screen:** a fourth screen, **to the right of Quests**, with its own tab (**Rewards**) in the bottom bar. The app still opens on the Main screen. From top to bottom:
+   - **Inventory:** the rewards I've earned and not used yet, newest first. Each shows its name, its kind (small label: Day / Week / Goal) and the date it was earned, and has a **"Use"** button for when I actually enjoy it. Used rewards move to a **"Used"** list, hidden behind a "Show used" toggle (a small history).
+   - **Goal:** the current goal (see step 3), with Edit, or a "Set a goal" button if there is none.
+   - **Daily reward list** and **weekly reward list:** short lists of reward names I can add to and delete from (e.g. "An episode of a series", "A nice coffee"). Choosing a reward **doesn't remove it** from the list; it can be chosen again another day.
+2. **Daily and weekly rewards:**
+   - When a day becomes complete, a **"Day complete!" popup** shows my daily reward list, and I tap the one I want; it goes into the inventory. If the list is empty, the popup offers to add one.
+   - **"Choose later"** closes the popup; the inventory then holds a **"Daily reward (not chosen yet)"** entry, which I tap to choose.
+   - When a week becomes perfect (ascension), a bigger **"Perfect week!"** popup works the same way with the weekly reward list. (If both happen at once, on Sunday, the week's popup comes after the day's.)
+   - **Un-ticking:** if the day is no longer complete (or the week no longer perfect), that day's (week's) reward is **removed again if it hasn't been used yet**, just like the level-up is undone. Ticking it again earns it again.
+3. **Big goal:** **one goal at a time**: a **target exp** (e.g. 1000) and a **reward** (e.g. "Weekend trip").
+   - It counts the exp of all quests ticked **from the day the goal was set** (using each quest's current exp, like the stats).
+   - **Main screen:** a goal bar under the day's progress bar, e.g. "Goal: 340 / 1000 exp", with **what I'm working towards** written under it ("→ Weekend trip"). Tapping it opens the Rewards screen.
+   - When it's reached, a **"Goal reached!"** popup; the reward goes into the inventory, and the goal form opens to set the next one, pre-filled with the same target. Once reached, a goal reward is **final** (un-ticking doesn't take it back).
+4. **Reminders on the Main screen:** if there's **no goal**, the goal bar's place shows a "Set a goal" button; if the **daily reward list is empty**, a short line ("No daily rewards yet — add some") does the same. Both lead to the Rewards screen.
+
+Rewards (lists, goal and inventory) are included in **backups**, and wiped by **Reset everything**.
+
 **Later (don't build yet):**
-- **Version 6 — Rewards:** real-life rewards: a small one for each completed day, and a bigger one for reaching an exp goal. See *Open questions*.
+- Nothing right now.
 
 **Out of scope:** user accounts, syncing between devices, notifications or reminders, an app store release, multiple users.
 

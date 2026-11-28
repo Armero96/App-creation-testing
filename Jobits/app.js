@@ -65,6 +65,34 @@ let completedDays = loadFromStorage(COMPLETED_DAYS_KEY, {});
 // Free-text notes use "text"; checklists use "items": [{ id, text, done }].
 let notes = loadFromStorage(NOTES_KEY, []);
 
+// Rewards (version 6), all kept in one object:
+// {
+//   dailyList:  [{ id, name }],   rewards to choose from for a completed day
+//   weeklyList: [{ id, name }],   ...and for a perfect week
+//   goal: null | { target, reward, start: "YYYY-MM-DD" },   the big exp goal
+//   inventory: [{ id, kind: "day" | "week" | "goal", name, earned, used }]
+// }
+// In the inventory, name is null while a reward hasn't been chosen yet,
+// earned is the day it was earned, and used is the day it was used (or null).
+const REWARDS_KEY = "jobits.rewards";
+
+// A fresh, empty rewards object (a new one each time, so nothing is shared)
+function emptyRewards() {
+  return { dailyList: [], weeklyList: [], goal: null, inventory: [] };
+}
+
+// Fill in anything missing, e.g. from an older backup
+function normalizeRewards(saved) {
+  const isObject = saved !== null && typeof saved === "object" && !Array.isArray(saved);
+  return { ...emptyRewards(), ...(isObject ? saved : {}) };
+}
+
+let rewards = normalizeRewards(loadFromStorage(REWARDS_KEY, null));
+
+function saveRewards() {
+  localStorage.setItem(REWARDS_KEY, JSON.stringify(rewards));
+}
+
 
 // ===== Small helpers =====
 
@@ -995,6 +1023,7 @@ function renderAll() {
   renderMainScreen();
   renderHabitList();
   renderNotes();
+  renderRewards();
 }
 
 
@@ -1198,11 +1227,13 @@ function resetEverything() {
   localStorage.removeItem(COMPLETED_DAYS_KEY);
   localStorage.removeItem(NOTES_KEY);
   localStorage.removeItem(VISIT_REPORT_KEY);
+  localStorage.removeItem(REWARDS_KEY);
   // ...and the copies in memory
   habits = [];
   completions = {};
   completedDays = {};
   notes = [];
+  rewards = emptyRewards();
   // Forget the last shown level, so no message pops up after the reset
   shownLevel = null;
   shownAscension = null;
@@ -1214,7 +1245,7 @@ function resetEverything() {
 // ===== Backup: export and import =====
 // A backup is a small JSON text file with everything the game needs:
 // quests, ticks and completed days (level and ascension come from those),
-// and notes. Backups from before notes existed simply have no notes.
+// notes and rewards. Older backups simply have no notes or rewards.
 // Filters are a display setting, so they aren't included.
 
 const BACKUP_VERSION = 1; // bump if the file layout ever changes
@@ -1247,6 +1278,7 @@ exportButton.addEventListener("click", () => {
     completions: completions,
     completedDays: completedDays,
     notes: notes,
+    rewards: rewards,
   };
   const text = JSON.stringify(backup, null, 2); // indented, readable by humans
   const file = new Blob([text], { type: "application/json" });
@@ -1321,7 +1353,14 @@ function isValidBackup(backup) {
       isObject(note) && typeof note.id === "string" && typeof note.title === "string"
     )
   );
-  return questsOk && ticksOk && notesOk;
+  // Rewards are optional too; if there, each list must really be a list
+  const rewardsOk = backup.rewards === undefined || (
+    isObject(backup.rewards) &&
+    ["dailyList", "weeklyList", "inventory"].every(
+      (key) => backup.rewards[key] === undefined || Array.isArray(backup.rewards[key])
+    )
+  );
+  return questsOk && ticksOk && notesOk && rewardsOk;
 }
 
 // ----- Import, part 2: replace or merge -----
@@ -1338,6 +1377,7 @@ function finishImport(message) {
   saveCompletions();
   saveCompletedDays();
   saveNotes();
+  saveRewards();
   shownLevel = null;
   shownAscension = null;
   closeImport();
@@ -1352,6 +1392,7 @@ importReplaceButton.addEventListener("click", () =>
     completions = pendingBackup.completions;
     completedDays = pendingBackup.completedDays;
     notes = pendingBackup.notes || [];
+    rewards = normalizeRewards(pendingBackup.rewards);
     finishImport("Backup loaded (replaced).");
   })
 );
@@ -1380,6 +1421,18 @@ importMergeButton.addEventListener("click", () => {
   // Notes: like quests, add the missing ones; if in both, keep this phone's
   const knownNoteIds = new Set(notes.map((note) => note.id));
   notes = notes.concat((backup.notes || []).filter((note) => !knownNoteIds.has(note.id)));
+
+  // Rewards: lists and inventory like notes (add the missing ones);
+  // the goal: keep this phone's, or take the backup's if there's none here
+  const backupRewards = normalizeRewards(backup.rewards);
+  const addMissing = (mine, theirs) => {
+    const knownRewardIds = new Set(mine.map((r) => r.id));
+    return mine.concat(theirs.filter((r) => !knownRewardIds.has(r.id)));
+  };
+  rewards.dailyList = addMissing(rewards.dailyList, backupRewards.dailyList);
+  rewards.weeklyList = addMissing(rewards.weeklyList, backupRewards.weeklyList);
+  rewards.inventory = addMissing(rewards.inventory, backupRewards.inventory);
+  rewards.goal = rewards.goal || backupRewards.goal;
 
   finishImport(`Backup merged (${newQuests.length} new quest${newQuests.length === 1 ? "" : "s"}).`);
 });
@@ -1524,7 +1577,8 @@ function closeForm() {
 }
 
 // (Wrapped in a function so the click event isn't passed in as a "habit")
-document.getElementById("add-button").addEventListener("click", () => openForm());
+const addQuestButton = document.getElementById("add-button");
+addQuestButton.addEventListener("click", () => openForm());
 document.getElementById("first-quest-button").addEventListener("click", () => openForm());
 document.getElementById("cancel-button").addEventListener("click", closeForm);
 
@@ -2014,6 +2068,147 @@ noteDeleteButton.addEventListener("click", () =>
 );
 
 
+// ===== Rewards screen =====
+// Real-life rewards, earned by playing: the inventory of earned rewards,
+// and the daily / weekly lists to choose them from.
+
+// The Rewards tab in the bottom bar: a treasure chest
+document.getElementById("rewards-tab-icon").innerHTML = pixelIcon([
+  "........",
+  ".XXXXXX.",
+  "X......X",
+  "XXXXXXXX",
+  "X..XX..X",
+  "X......X",
+  "XXXXXXXX",
+  "........",
+]);
+
+const inventoryList = document.getElementById("inventory-list");
+const inventoryEmpty = document.getElementById("inventory-empty");
+const usedList = document.getElementById("used-list");
+const showUsedRow = document.getElementById("show-used-row");
+const showUsedBox = document.getElementById("show-used");
+
+// The small label on each earned reward
+const REWARD_KIND_LABELS = { day: "Day", week: "Week", goal: "Goal" };
+
+// One earned reward in the inventory (or in the "used" history)
+function makeRewardItem(entry) {
+  const item = document.createElement("li");
+  item.className = entry.used ? "reward-item used" : "reward-item";
+
+  const top = document.createElement("div");
+  top.className = "reward-top";
+  const kind = document.createElement("span");
+  kind.className = `reward-kind kind-${entry.kind}`;
+  kind.textContent = REWARD_KIND_LABELS[entry.kind];
+  const date = document.createElement("span");
+  date.className = "reward-date";
+  date.textContent = entry.used ? `used ${formatDate(entry.used)}` : formatDate(entry.earned);
+  top.append(kind, date);
+
+  const name = document.createElement("p");
+  name.className = "reward-name";
+  name.textContent = entry.name || "Not chosen yet"; // textContent: plain text
+  item.append(top, name);
+
+  // "Use" (two taps): for when you actually enjoy the reward
+  if (!entry.used && entry.name) {
+    const useButton = document.createElement("button");
+    useButton.type = "button";
+    useButton.className = "reward-use";
+    useButton.textContent = "Use";
+    useButton.addEventListener("click", () =>
+      confirmTwice(useButton, "Use", "Sure?", () => {
+        entry.used = todayString();
+        saveRewards();
+        renderRewards();
+      })
+    );
+    item.append(useButton);
+  }
+  return item;
+}
+
+// One of the two lists to choose from (daily or weekly)
+function renderPool(listElement, pool) {
+  listElement.innerHTML = "";
+  if (pool.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "placeholder pool-empty";
+    empty.textContent = "Nothing here yet";
+    listElement.append(empty);
+  }
+  for (const reward of pool) {
+    const row = document.createElement("li");
+    row.className = "pool-item";
+    const name = document.createElement("span");
+    name.className = "pool-name";
+    name.textContent = reward.name;
+    // ✕ deletes it from the list (rewards already earned are kept)
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "check-remove";
+    remove.setAttribute("aria-label", `Delete ${reward.name}`);
+    remove.textContent = "✕";
+    remove.addEventListener("click", () => {
+      pool.splice(pool.indexOf(reward), 1); // remove it from the list
+      saveRewards();
+      renderRewards();
+    });
+    row.append(name, remove);
+    listElement.append(row);
+  }
+}
+
+function renderRewards() {
+  // Unused rewards, newest first (the newest are at the end of the array)
+  const unused = rewards.inventory.filter((r) => !r.used).reverse();
+  inventoryList.innerHTML = "";
+  for (const entry of unused) inventoryList.append(makeRewardItem(entry));
+  inventoryEmpty.hidden = unused.length > 0;
+
+  // Used rewards: most recently used first, only if "Show used" is ticked
+  const used = rewards.inventory.filter((r) => r.used)
+    .sort((a, b) => (a.used < b.used ? 1 : a.used > b.used ? -1 : 0));
+  usedList.innerHTML = "";
+  for (const entry of used) usedList.append(makeRewardItem(entry));
+  showUsedRow.hidden = used.length === 0;
+  usedList.hidden = !showUsedBox.checked || used.length === 0;
+
+  renderPool(document.getElementById("daily-pool"), rewards.dailyList);
+  renderPool(document.getElementById("weekly-pool"), rewards.weeklyList);
+}
+
+showUsedBox.addEventListener("change", renderRewards);
+
+// The "add a reward" field under each list. Like checklist items, the
+// + button is greyed out while the field is empty.
+function setUpPoolForm(formId, getPool) {
+  const addForm = document.getElementById(formId);
+  const input = addForm.querySelector("input");
+  const button = addForm.querySelector("button");
+  input.addEventListener("input", () => {
+    button.disabled = input.value.trim() === "";
+  });
+  addForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = input.value.trim();
+    if (name === "") return;
+    getPool().push({ id: makeId(), name: name });
+    saveRewards();
+    input.value = "";
+    button.disabled = true;
+    renderRewards();
+  });
+}
+
+// (Functions, because Import or Reset can replace the "rewards" object)
+setUpPoolForm("daily-add", () => rewards.dailyList);
+setUpPoolForm("weekly-add", () => rewards.weeklyList);
+
+
 // ===== Month grid =====
 // Draws one month as a grid of days, weeks starting on Monday.
 // Shared by the calendar (and, later, the date picker): each one decides
@@ -2381,11 +2576,13 @@ document.getElementById("picker-today").addEventListener("click", () => {
 
 
 // ===== Screen switching =====
-// Screen 0 = Notes, screen 1 = Main (today), screen 2 = Quests (habits).
+// Screen 0 = Notes, screen 1 = Main (today), screen 2 = Quests (habits),
+// screen 3 = Rewards.
 
 const track = document.getElementById("track");
 const tabs = document.querySelectorAll(".tab");
-const SCREEN_COUNT = 3;
+const SCREEN_COUNT = 4;
+const REWARDS_SCREEN = 3;
 const MAIN_SCREEN = 1;
 
 let currentScreen = MAIN_SCREEN;
@@ -2400,8 +2597,8 @@ function showScreen(index) {
   // out, so the phone's keyboard closes instead of staying up on the new screen.
   if (document.activeElement.matches("input, textarea")) document.activeElement.blur();
 
-  // Slide the track. Each screen is a third of the track's width,
-  // so screen 1 means moving the track a third of the way to the left.
+  // Slide the track. Each screen is a quarter of the track's width,
+  // so screen 1 means moving the track a quarter of the way to the left.
   track.style.transform = `translateX(-${(index * 100) / SCREEN_COUNT}%)`;
 
   // Highlight the matching tab in the bottom bar
@@ -2412,8 +2609,9 @@ function showScreen(index) {
     else tab.removeAttribute("aria-current");
   });
 
-  // The "add note" button only belongs on the Notes screen
+  // Each + button only belongs on its own screen (Notes / Quests)
   addNoteButton.hidden = index !== 0;
+  addQuestButton.hidden = index !== 2;
 }
 
 // ----- Bottom bar (phone and computer) -----

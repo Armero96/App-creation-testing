@@ -19,7 +19,7 @@
 
   <!-- The "viewport" is the window you look through; it shows one screen at a time. -->
   <main class="viewport">
-    <!-- The "track" holds the three screens side by side. We slide it left/right to switch. -->
+    <!-- The "track" holds the four screens side by side. We slide it left/right to switch. -->
     <div class="track" id="track">
 
       <!-- ===== Screen 0: Notes ===== -->
@@ -150,17 +150,54 @@
         <p class="placeholder" id="habits-no-match" hidden>No quests match these filters</p>
         <!-- app.js fills this list with one <li> per saved habit -->
         <ul class="habit-list" id="habit-list"></ul>
+      </section>
 
-        <!-- Opens the "new habit" form -->
-        <button class="add-button" id="add-button" type="button" aria-label="Add quest">+</button>
+      <!-- ===== Screen 3: Rewards ===== -->
+      <section class="screen" id="screen-rewards" aria-label="Rewards">
+        <h1>Rewards</h1>
+
+        <!-- Earned rewards, waiting to be used. app.js fills the lists. -->
+        <h2>Inventory</h2>
+        <p class="placeholder" id="inventory-empty">No rewards yet. Complete a day to earn one!</p>
+        <ul class="reward-list" id="inventory-list"></ul>
+        <!-- Used rewards: a small history, hidden unless ticked -->
+        <label class="checkbox-row filter-checkbox" id="show-used-row">
+          <input type="checkbox" id="show-used">
+          Show used
+        </label>
+        <ul class="reward-list used-list" id="used-list" hidden></ul>
+
+        <!-- The rewards to choose from. Choosing one doesn't remove it. -->
+        <h2>Daily rewards</h2>
+        <p class="section-help">Small treats. You pick one each time you complete a day.</p>
+        <div class="reward-pool">
+          <ul class="pool-list" id="daily-pool"></ul>
+          <form class="check-add" id="daily-add">
+            <input type="text" maxlength="40" autocomplete="off" placeholder="Add a daily reward" aria-label="Add a daily reward">
+            <button type="submit" aria-label="Add" disabled>+</button>
+          </form>
+        </div>
+
+        <h2>Weekly rewards</h2>
+        <p class="section-help">Bigger treats. You pick one for each perfect week (+1 ascension).</p>
+        <div class="reward-pool">
+          <ul class="pool-list" id="weekly-pool"></ul>
+          <form class="check-add" id="weekly-add">
+            <input type="text" maxlength="40" autocomplete="off" placeholder="Add a weekly reward" aria-label="Add a weekly reward">
+            <button type="submit" aria-label="Add" disabled>+</button>
+          </form>
+        </div>
       </section>
 
     </div>
   </main>
 
-  <!-- Adds a new note. It lives outside the sliding track, so app.js
-       shows it only while the Notes screen is on display. -->
+  <!-- The + buttons live outside the sliding track, pinned to the window.
+       app.js shows each one only while its own screen is on display. -->
+  <!-- Adds a new note (Notes screen) -->
   <button class="add-button" id="add-note-button" type="button" aria-label="Add note" hidden>+</button>
+  <!-- Opens the "new quest" form (Quests screen) -->
+  <button class="add-button" id="add-button" type="button" aria-label="Add quest" hidden>+</button>
 
   <!-- Bottom bar: one tappable tab per screen, each with a small pixel icon and
        a label. (Swiping and the arrow keys still work too.)
@@ -195,6 +232,11 @@
         <rect x="0" y="7" width="1" height="1"/><rect x="2" y="7" width="6" height="1"/>
       </svg>
       <span class="tab-label">Quests</span>
+    </button>
+    <button type="button" class="tab" data-screen="3">
+      <!-- Treasure chest; app.js draws its pixel icon -->
+      <span class="tab-icon" id="rewards-tab-icon"></span>
+      <span class="tab-label">Rewards</span>
     </button>
   </nav>
 

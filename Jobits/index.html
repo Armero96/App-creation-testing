@@ -72,10 +72,19 @@
           <ul class="task-list" id="carried-list"></ul>
         </div>
 
-        <h2>Today's quests</h2>
-        <!-- app.js fills this with one slot per time of day
-             (morning, noon, afternoon, evening, and "any time" if needed) -->
-        <div id="today-slots"></div>
+        <!-- Only shown while there are no quests at all: a quick way to get started -->
+        <div class="first-quest" id="first-quest" hidden>
+          <p>No quests yet. Add one to start your adventure!</p>
+          <button type="button" class="first-quest-button" id="first-quest-button">+ Add your first quest</button>
+        </div>
+
+        <!-- Hidden while there are no quests at all (the button above shows instead) -->
+        <div id="today-section">
+          <h2>Today's quests</h2>
+          <!-- app.js fills this with one slot per time of day
+               (morning, noon, afternoon, evening, and "any time" if needed) -->
+          <div id="today-slots"></div>
+        </div>
 
         <!-- Standing quests: "at some point" to-dos, no exp. Hidden when there are none. -->
         <div id="standing-section" hidden>
@@ -254,7 +263,8 @@
 
       <div class="form-buttons">
         <button type="button" class="button-secondary" id="cancel-button">Cancel</button>
-        <button type="submit" class="button-primary">Save</button>
+        <!-- Greyed out until the quest has a name -->
+        <button type="submit" class="button-primary" id="habit-save">Save</button>
       </div>
     </form>
   </div>
@@ -292,7 +302,8 @@
 
       <div class="form-buttons">
         <button type="button" class="button-secondary" id="note-cancel">Cancel</button>
-        <button type="submit" class="button-primary">Save</button>
+        <!-- Greyed out until the note has a title -->
+        <button type="submit" class="button-primary" id="note-save">Save</button>
       </div>
       <!-- Only shown when editing an existing note (two taps) -->
       <button type="button" class="note-delete" id="note-delete" hidden>Delete note</button>

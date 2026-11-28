@@ -137,6 +137,61 @@ const TIMING_LABELS = {
 const TIMING_ORDER = ["morning", "noon", "afternoon", "evening", "anytime"];
 
 
+// ===== Popups and the phone's Back button =====
+// Without help, the Back button leaves the page even when a popup is open.
+// So each time a popup opens, we add an entry to the browser's history
+// ("pushState"). Pressing Back then just removes that entry, and we close
+// the popup instead of leaving. When a popup is closed in another way
+// (Cancel, Save, Escape), we remove its history entry ourselves.
+
+const popupStack = [];          // the open popups, the top one last
+const popupClosers = new Map(); // popup element -> the function that closes it
+let handlingBack = false;       // true while Back is closing a popup
+let skipPops = 0;               // history entries we removed ourselves
+
+// Show a popup. closeFn is its normal close function (which calls closePopup).
+function openPopup(element, closeFn) {
+  if (!element.hidden) return;  // already open
+  element.hidden = false;
+  popupStack.push(element);
+  popupClosers.set(element, closeFn);
+  history.pushState({ jobitsPopup: true }, "");
+}
+
+// Hide a popup, and remove its history entry unless Back already did
+function closePopup(element) {
+  element.hidden = true;
+  const index = popupStack.indexOf(element);
+  if (index === -1) return;     // it wasn't open
+  popupStack.splice(index, 1);
+  if (!handlingBack) {
+    skipPops++;                 // the "popstate" this causes isn't a Back press
+    history.back();
+  }
+}
+
+function isAnyPopupOpen() {
+  return popupStack.length > 0;
+}
+
+// Close the popup on top (used by Back and by the Escape key)
+function closeTopPopup() {
+  const top = popupStack[popupStack.length - 1];
+  if (top) popupClosers.get(top)();
+}
+
+// "popstate" fires when the browser moves back through its history
+window.addEventListener("popstate", () => {
+  if (skipPops > 0) {           // caused by closePopup's history.back(): ignore
+    skipPops--;
+    return;
+  }
+  handlingBack = true;
+  closeTopPopup();
+  handlingBack = false;
+});
+
+
 // ===== Categories and their pixel icons =====
 
 // Turn a little text picture into an SVG icon: every "X" becomes one pixel.
@@ -682,6 +737,8 @@ const todaySlots = document.getElementById("today-slots");
 const standingSection = document.getElementById("standing-section");
 const standingList = document.getElementById("standing-list");
 const standingDueNote = document.getElementById("standing-due-note");
+const firstQuestBox = document.getElementById("first-quest");
+const todaySection = document.getElementById("today-section");
 
 // Crossed swords, drawn on an 8x8 pixel grid, shown in the box of a ticked task.
 // Each sword: blade (white) from a top corner to the middle, then guard, handle
@@ -783,6 +840,12 @@ function renderMainScreen() {
   carriedList.innerHTML = "";
   for (const habit of sortByTiming(carried)) carriedList.append(makeTaskRow(habit, today, true));
   carriedSection.hidden = carried.length === 0;
+
+  // No quests at all yet: show the "Add your first quest" button instead of
+  // the empty time slots, so a new user knows where to start
+  const noQuests = habits.length === 0;
+  firstQuestBox.hidden = !noQuests;
+  todaySection.hidden = noQuests;
 
   // Today's tasks: one slot per time of day, in order
   todaySlots.innerHTML = "";
@@ -1111,7 +1174,7 @@ importFile.addEventListener("change", async () => {
     `${dayCount} day${dayCount === 1 ? "" : "s"} of ticks ` +
     `and ${noteCount} note${noteCount === 1 ? "" : "s"}.`;
   showBackupMessage("");
-  importModal.hidden = false;
+  openPopup(importModal, closeImport);
 });
 
 // Check the file really is a Jobits backup with the expected pieces,
@@ -1148,12 +1211,8 @@ function isValidBackup(backup) {
 // ----- Import, part 2: replace or merge -----
 
 function closeImport() {
-  importModal.hidden = true;
+  closePopup(importModal);
   pendingBackup = null;
-}
-
-function isImportOpen() {
-  return !importModal.hidden;
 }
 
 // Save everything, forget the last shown level (so no "Level-up!" pops up
@@ -1263,9 +1322,14 @@ categoryButtons.forEach((button) => {
   });
 });
 
-function isFormOpen() {
-  return !modal.hidden;
+// Save stays greyed out until the quest has a name
+const saveButton = document.getElementById("habit-save");
+
+function updateSaveButton() {
+  saveButton.disabled = nameInput.value.trim() === "";
 }
+
+nameInput.addEventListener("input", updateSaveButton);
 
 // Open the form. With no habit given, it's a blank "New habit" form;
 // with a habit given, its fields are filled in for editing.
@@ -1292,7 +1356,8 @@ function openForm(habit = null) {
   }
 
   updateFormFields(); // show only the fields that fit this kind of quest
-  modal.hidden = false;
+  updateSaveButton();
+  openPopup(modal, closeForm);
   // For a new quest, put the cursor in the name field (you always type one).
   // When editing, don't: on a phone that would pop up the keyboard and cover
   // the form, even if you only wanted to change e.g. the category.
@@ -1300,12 +1365,13 @@ function openForm(habit = null) {
 }
 
 function closeForm() {
-  modal.hidden = true;
+  closePopup(modal);
   document.activeElement.blur(); // take the cursor out of the hidden form
 }
 
 // (Wrapped in a function so the click event isn't passed in as a "habit")
 document.getElementById("add-button").addEventListener("click", () => openForm());
+document.getElementById("first-quest-button").addEventListener("click", () => openForm());
 document.getElementById("cancel-button").addEventListener("click", closeForm);
 
 // Show or hide the repeat options when "Repeating" is ticked/unticked
@@ -1629,6 +1695,11 @@ function makeChecklistCard(note) {
   addButton.type = "submit";
   addButton.textContent = "+";
   addButton.setAttribute("aria-label", "Add");
+  // Greyed out while the field is empty, so it's clear there's nothing to add
+  addButton.disabled = true;
+  input.addEventListener("input", () => {
+    addButton.disabled = input.value.trim() === "";
+  });
   addForm.append(input, addButton);
   addForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -1717,9 +1788,14 @@ function selectNoteIcon(icon) {
   });
 }
 
-function isNoteFormOpen() {
-  return !noteModal.hidden;
+// Like the quest form: Save stays greyed out until the note has a title
+const noteSaveButton = document.getElementById("note-save");
+
+function updateNoteSaveButton() {
+  noteSaveButton.disabled = noteTitleInput.value.trim() === "";
 }
+
+noteTitleInput.addEventListener("input", updateNoteSaveButton);
 
 // Open the form, empty for a new note, or filled in to edit one
 function openNoteForm(note = null) {
@@ -1742,13 +1818,14 @@ function openNoteForm(note = null) {
   // The kind can only be chosen when creating a note
   noteKindField.hidden = note !== null;
   noteDeleteButton.hidden = note === null; // can only delete existing notes
-  noteModal.hidden = false;
+  updateNoteSaveButton();
+  openPopup(noteModal, closeNoteForm);
   // Like quests: the keyboard only pops up by itself for a new note
   if (!note) noteTitleInput.focus();
 }
 
 function closeNoteForm() {
-  noteModal.hidden = true;
+  closePopup(noteModal);
   document.activeElement.blur(); // take the cursor out of the hidden form
 }
 
@@ -1959,15 +2036,11 @@ function openCalendar() {
   calendarMonth = today.getMonth();
   calendarSelected = todayString(); // show today's details to start with
   renderCalendar();
-  calendarModal.hidden = false;
+  openPopup(calendarModal, closeCalendar);
 }
 
 function closeCalendar() {
-  calendarModal.hidden = true;
-}
-
-function isCalendarOpen() {
-  return !calendarModal.hidden;
+  closePopup(calendarModal);
 }
 
 document.getElementById("today-date").addEventListener("click", openCalendar);
@@ -2070,15 +2143,11 @@ function openStats() {
   statsYear = today.getFullYear();
   statsMonth = today.getMonth();
   renderStatsPopup();
-  statsModal.hidden = false;
+  openPopup(statsModal, closeStats);
 }
 
 function closeStats() {
-  statsModal.hidden = true;
-}
-
-function isStatsOpen() {
-  return !statsModal.hidden;
+  closePopup(statsModal);
 }
 
 document.getElementById("adventurer").addEventListener("click", openStats);
@@ -2153,15 +2222,11 @@ function openPicker() {
   pickerYear = start.getFullYear();
   pickerMonth = start.getMonth();
   renderPicker();
-  pickerModal.hidden = false;
+  openPopup(pickerModal, closePicker);
 }
 
 function closePicker() {
-  pickerModal.hidden = true;
-}
-
-function isPickerOpen() {
-  return !pickerModal.hidden;
+  closePopup(pickerModal);
 }
 
 dateButton.addEventListener("click", openPicker);
@@ -2207,31 +2272,11 @@ function showScreen(index) {
 
 // ----- Keyboard (computer) -----
 document.addEventListener("keydown", (event) => {
-  // The date picker sits on top of the quest form: Escape closes just the picker
-  if (isPickerOpen()) {
-    if (event.key === "Escape") closePicker();
-    return;
-  }
-  // While the form is open, arrow keys are for moving the cursor in text
-  // fields, not for switching screens. Escape closes the form.
-  if (isFormOpen()) {
-    if (event.key === "Escape") closeForm();
-    return;
-  }
-  if (isImportOpen()) {
-    if (event.key === "Escape") closeImport();
-    return;
-  }
-  if (isNoteFormOpen()) {
-    if (event.key === "Escape") closeNoteForm();
-    return;
-  }
-  if (isCalendarOpen()) {
-    if (event.key === "Escape") closeCalendar();
-    return;
-  }
-  if (isStatsOpen()) {
-    if (event.key === "Escape") closeStats();
+  // While a popup is open, arrow keys are for moving the cursor in text
+  // fields, not for switching screens. Escape closes the popup on top
+  // (e.g. just the date picker, which sits on top of the quest form).
+  if (isAnyPopupOpen()) {
+    if (event.key === "Escape") closeTopPopup();
     return;
   }
   if (event.key === "ArrowRight") showScreen(currentScreen + 1);
@@ -2254,7 +2299,7 @@ track.addEventListener("touchstart", (event) => {
 
 track.addEventListener("touchend", (event) => {
   // no swiping while a popup is open
-  if (isFormOpen() || isImportOpen() || isNoteFormOpen() || isCalendarOpen() || isStatsOpen()) return;
+  if (isAnyPopupOpen()) return;
   if (touchStartedInField) return;
 
   const dx = event.changedTouches[0].clientX - touchStartX;

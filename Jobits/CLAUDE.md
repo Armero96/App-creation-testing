@@ -170,7 +170,10 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
 
 ## Open questions (ask me before building these parts)
 
-- None right now. Add new ones here as they come up.
+- **Rewards (planned for Version 6):** real-life rewards that I define myself. Details still to decide:
+  - **Daily reward:** one fixed reward I write (e.g. "an episode of a series"), or a list the app picks from at random?
+  - **Big goal:** I set a target exp (e.g. 1000) and a bigger reward. Does exp count from the moment the goal is set? When it's reached, do I set a new goal straight away?
+  - What does the **reward screen** look like (a popup when the day is completed / the goal is reached, a list of earned rewards, ...)?
 
 ---
 
@@ -209,8 +212,22 @@ The app might not be open at midnight or on Monday. **Every time the app opens, 
    - **Shield** = STR, **Helmet** = MIND, **Armour** = CON: this month's stat level (level 7 or more = Obsidian).
    - The stats popup also shows the adventurer and its gear names for the month shown (for past months, as on that month's last day).
 
+**Version 5 (planned; build one step at a time):**
+1. **Quick fixes:**
+   - The **"Add item"** button on checklist notes is **greyed out** while its field is empty (same for the quest form's Save button while the name is empty).
+   - The phone's **Back button closes any open popup** (quest form, note form, calendar, stats, import, date picker) instead of leaving the page.
+   - When there are **no quests at all**, the Main screen shows a big **"Add your first quest"** button that opens the quest form.
+2. **Bottom navigation bar:** the screen dots become a tappable bar with a pixel icon and a short label for each screen (**Notes · Today · Quests**). The current screen is highlighted. Swiping and arrow keys still work.
+3. **Quests screen tidy-up and wording:**
+   - **Export, Import and Reset everything** move into a **⋮ menu** in the top corner. Reset is the last item and needs **two taps** (like Delete).
+   - Filter chips are **grey unless selected**, so colour only marks what's chosen.
+   - The filters (and "Show completed") are **hidden when there are no quests**.
+   - **Standing quests are renamed "Side quests"** in all visible text (the code and stored data can keep "standing").
+   - In the quest form, the "Repeating" and "Standing" checkboxes become **one three-way choice: One-off · Repeating · Side quest**.
+4. **"Since your last visit" card:** when the app is opened on a new day, a card at the top of the Main screen lists **every day since the last visit** that was missed, with the quests left undone on each (e.g. "Thu 26 Nov — missed: Gym, Read"). If many days were missed, the first 7 are listed, followed by "and N more days". A ✕ dismisses it until the next new day. If nothing was missed, no card is shown.
+
 **Later (don't build yet):**
-- Nothing right now.
+- **Version 6 — Rewards:** real-life rewards: a small one for each completed day, and a bigger one for reaching an exp goal. See *Open questions*.
 
 **Out of scope:** user accounts, syncing between devices, notifications or reminders, an app store release, multiple users.
 
